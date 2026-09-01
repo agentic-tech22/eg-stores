@@ -21,8 +21,18 @@ import {
 } from "@/hooks/products/use-product-mutations";
 import { useCategories } from "@/hooks/categories/use-categories";
 import { useConfirm } from "@/components/molecules/confirm-dialog/confirm-context";
-import { ActionMenu, type ActionMenuItem } from "@/components/molecules/action-menu/ActionMenu";
-import { EmptyState, PageHeader, Pagination, RowLink, StatCard, TableRowsSkeleton } from "@/components/molecules/admin";
+import {
+  ActionMenu,
+  type ActionMenuItem,
+} from "@/components/molecules/action-menu/ActionMenu";
+import {
+  EmptyState,
+  PageHeader,
+  Pagination,
+  RowLink,
+  StatCard,
+  TableRowsSkeleton,
+} from "@/components/molecules/admin";
 import { Select } from "@/components/molecules/form";
 import { deleteProductImage } from "@/services/upload.service";
 import { notify } from "@/lib/toast";
@@ -129,8 +139,8 @@ export function ProductManager({
       description: (
         <>
           Delete{" "}
-          <span className="font-semibold text-admin-text">{product.title}</span>?
-          This also removes its images and cannot be undone.
+          <span className="text-admin-text font-semibold">{product.title}</span>
+          ? This also removes its images and cannot be undone.
         </>
       ),
       confirmLabel: "Delete product",
@@ -138,10 +148,20 @@ export function ProductManager({
     });
     if (!ok) return;
 
-    if (product.imageUrl) await deleteProductImage(product.imageUrl);
-    for (const img of product.images ?? []) await deleteProductImage(img);
     deleteProductMutation.mutate(product.id, {
-      onSuccess: () => notify.success("Product deleted."),
+      onSuccess: () => {
+        notify.success("Product deleted.");
+        // Images are cleaned up only once the row is actually gone. Deleting
+        // them first meant a refused delete — a product still used as a combo
+        // component, which combo_items.component_id blocks — stripped the
+        // pictures off a product that then survived. Not awaited: the record is
+        // deleted either way, so a slow storage call shouldn't hold up the toast.
+        void Promise.all(
+          [product.imageUrl, ...(product.images ?? [])]
+            .filter((url): url is string => Boolean(url))
+            .map((url) => deleteProductImage(url)),
+        );
+      },
     });
   }
 
@@ -158,7 +178,7 @@ export function ProductManager({
             <button
               type="button"
               onClick={openCreate}
-              className="flex cursor-pointer items-center gap-2 rounded-xl bg-admin-accent px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-admin-accent-hover"
+              className="bg-admin-accent hover:bg-admin-accent-hover flex cursor-pointer items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-colors"
             >
               <Plus className="h-4 w-4" strokeWidth={2.5} />
               Add Product
@@ -183,7 +203,11 @@ export function ProductManager({
         {can.viewFinances && (
           <StatCard
             label="Inventory Value"
-            value={formatCurrency(inventoryValue, currency.code, currency.locale)}
+            value={formatCurrency(
+              inventoryValue,
+              currency.code,
+              currency.locale,
+            )}
             icon={Wallet}
             tone="emerald"
             hint="at cost price"
@@ -193,8 +217,8 @@ export function ProductManager({
 
       {/* Search + category filter */}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="flex flex-1 items-center gap-2 rounded-2xl border border-admin-border bg-admin-surface px-4">
-          <Search className="h-4 w-4 shrink-0 text-admin-text-muted" />
+        <div className="border-admin-border bg-admin-surface flex flex-1 items-center gap-2 rounded-2xl border px-4">
+          <Search className="text-admin-text-muted h-4 w-4 shrink-0" />
           <input
             type="text"
             value={filterText}
@@ -204,7 +228,7 @@ export function ProductManager({
             }}
             placeholder="Filter by name or SKU..."
             aria-label="Filter products by name or SKU"
-            className="w-full bg-transparent py-3.5 text-sm text-admin-text placeholder:text-admin-text-muted focus:outline-none"
+            className="text-admin-text placeholder:text-admin-text-muted w-full bg-transparent py-3.5 text-sm focus:outline-none"
           />
         </div>
         {categories.length > 0 && (
@@ -240,7 +264,7 @@ export function ProductManager({
               <button
                 type="button"
                 onClick={openCreate}
-                className="flex cursor-pointer items-center gap-2 rounded-xl bg-admin-accent px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-admin-accent-hover"
+                className="bg-admin-accent hover:bg-admin-accent-hover flex cursor-pointer items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold text-white transition-colors"
               >
                 <Plus className="h-4 w-4" strokeWidth={2.5} />
                 Add Product
@@ -249,32 +273,44 @@ export function ProductManager({
           }
         />
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-admin-border bg-admin-surface">
+        <div className="border-admin-border bg-admin-surface overflow-hidden rounded-2xl border">
           {/* Table header */}
-          <div className="hidden border-b border-admin-border bg-admin-card/40 px-5 py-3 sm:grid sm:grid-cols-12 sm:items-center sm:gap-4">
-            <p className="col-span-1 text-[10px] font-bold uppercase tracking-[0.15em] text-admin-text-muted">S.N</p>
-            <p className="col-span-3 text-[10px] font-bold uppercase tracking-[0.15em] text-admin-text-muted">Product</p>
-            <p className="col-span-2 text-[10px] font-bold uppercase tracking-[0.15em] text-admin-text-muted">Price</p>
-            <p className="col-span-2 text-[10px] font-bold uppercase tracking-[0.15em] text-admin-text-muted">Stock</p>
-            <p className="col-span-2 text-[10px] font-bold uppercase tracking-[0.15em] text-admin-text-muted">Status</p>
-            <p className="col-span-2 text-right text-[10px] font-bold uppercase tracking-[0.15em] text-admin-text-muted">Actions</p>
+          <div className="border-admin-border bg-admin-card/40 hidden border-b px-5 py-3 sm:grid sm:grid-cols-12 sm:items-center sm:gap-4">
+            <p className="text-admin-text-muted col-span-1 text-[10px] font-bold tracking-[0.15em] uppercase">
+              S.N
+            </p>
+            <p className="text-admin-text-muted col-span-3 text-[10px] font-bold tracking-[0.15em] uppercase">
+              Product
+            </p>
+            <p className="text-admin-text-muted col-span-2 text-[10px] font-bold tracking-[0.15em] uppercase">
+              Price
+            </p>
+            <p className="text-admin-text-muted col-span-2 text-[10px] font-bold tracking-[0.15em] uppercase">
+              Stock
+            </p>
+            <p className="text-admin-text-muted col-span-2 text-[10px] font-bold tracking-[0.15em] uppercase">
+              Status
+            </p>
+            <p className="text-admin-text-muted col-span-2 text-right text-[10px] font-bold tracking-[0.15em] uppercase">
+              Actions
+            </p>
           </div>
 
           {isFetching && products.length === 0 ? (
             <TableRowsSkeleton />
           ) : filtered.length === 0 ? (
-            <div className="px-5 py-12 text-center text-sm text-admin-text-muted">
+            <div className="text-admin-text-muted px-5 py-12 text-center text-sm">
               No products match &ldquo;{filterText}&rdquo;.
             </div>
           ) : (
-            <div className="divide-y divide-admin-border">
+            <div className="divide-admin-border divide-y">
               {paginatedProducts.map((product, i) => (
                 <div
                   key={product.id}
-                  className="grid grid-cols-1 gap-3 px-5 py-3.5 transition-colors hover:bg-admin-card/30 sm:grid-cols-12 sm:items-center sm:gap-4"
+                  className="hover:bg-admin-card/30 grid grid-cols-1 gap-3 px-5 py-3.5 transition-colors sm:grid-cols-12 sm:items-center sm:gap-4"
                 >
                   {/* S.N */}
-                  <div className="col-span-1 text-sm font-bold text-admin-text-muted">
+                  <div className="text-admin-text-muted col-span-1 text-sm font-bold">
                     {(safePage - 1) * ITEMS_PER_PAGE + i + 1}
                   </div>
 
@@ -284,52 +320,63 @@ export function ProductManager({
                     label={`View ${product.title}`}
                     className="col-span-3"
                   >
-                    <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-admin-border bg-admin-card">
+                    <div className="border-admin-border bg-admin-card h-12 w-12 shrink-0 overflow-hidden rounded-xl border">
                       {product.imageUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={product.imageUrl} alt={product.title} className="h-full w-full object-cover" />
+                        <img
+                          src={product.imageUrl}
+                          alt={product.title}
+                          className="h-full w-full object-cover"
+                        />
                       ) : (
-                        <div className="flex h-full w-full items-center justify-center text-admin-text-muted">
+                        <div className="text-admin-text-muted flex h-full w-full items-center justify-center">
                           <ImageIcon className="h-5 w-5" />
                         </div>
                       )}
                     </div>
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-bold text-admin-text transition-colors group-hover:text-admin-accent">
+                      <p className="text-admin-text group-hover:text-admin-accent truncate text-sm font-bold transition-colors">
                         {product.title}
                       </p>
                       {product.description && (
-                        <p className="truncate text-[11px] text-admin-text-muted">{product.description}</p>
+                        <p className="text-admin-text-muted truncate text-[11px]">
+                          {product.description}
+                        </p>
                       )}
                       <div className="flex items-center gap-1.5">
                         {product.sku && (
-                          <p className="truncate font-mono text-[10px] uppercase tracking-wide text-admin-text-muted">
+                          <p className="text-admin-text-muted truncate font-mono text-[10px] tracking-wide uppercase">
                             {product.sku}
                           </p>
                         )}
-                        {product.categoryId && categoryName.has(product.categoryId) && (
-                          <span className="inline-flex shrink-0 rounded-full bg-admin-card px-2 py-0.5 text-[10px] font-bold text-admin-text-secondary">
-                            {categoryName.get(product.categoryId)}
-                          </span>
-                        )}
+                        {product.categoryId &&
+                          categoryName.has(product.categoryId) && (
+                            <span className="bg-admin-card text-admin-text-secondary inline-flex shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold">
+                              {categoryName.get(product.categoryId)}
+                            </span>
+                          )}
                       </div>
                     </div>
                   </RowLink>
 
                   {/* Price */}
                   <div className="col-span-2">
-                    <span className="inline-flex rounded-lg bg-admin-card px-2.5 py-1 text-xs font-bold text-admin-text">
-                      {formatCurrency(product.price, currency.code, currency.locale)}
+                    <span className="bg-admin-card text-admin-text inline-flex rounded-lg px-2.5 py-1 text-xs font-bold">
+                      {formatCurrency(
+                        product.price,
+                        currency.code,
+                        currency.locale,
+                      )}
                     </span>
                   </div>
 
                   {/* Stock */}
                   <div className="col-span-2">
-                    <span className="text-sm font-bold text-admin-text">
+                    <span className="text-admin-text text-sm font-bold">
                       {effectiveStock(product)}
                     </span>
                     {product.hasVariants && (
-                      <span className="ml-1.5 inline-flex items-center rounded-full bg-admin-accent/12 px-2 py-0.5 text-[10px] font-bold text-admin-accent">
+                      <span className="bg-admin-accent/12 text-admin-accent ml-1.5 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold">
                         Variants
                       </span>
                     )}
@@ -338,13 +385,13 @@ export function ProductManager({
                   {/* Status */}
                   <div className="col-span-2">
                     {product.isFeatured ? (
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-admin-accent/12 px-2.5 py-0.5 text-[11px] font-bold text-admin-accent">
+                      <span className="bg-admin-accent/12 text-admin-accent inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-bold">
                         <Star className="h-3 w-3" fill="currentColor" />
                         Featured
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1.5 text-[11px] text-admin-text-muted">
-                        <span className="h-1.5 w-1.5 rounded-full bg-admin-text-muted/40" />
+                      <span className="text-admin-text-muted inline-flex items-center gap-1.5 text-[11px]">
+                        <span className="bg-admin-text-muted/40 h-1.5 w-1.5 rounded-full" />
                         Standard
                       </span>
                     )}
@@ -354,51 +401,55 @@ export function ProductManager({
                   <div className="col-span-2 flex items-center justify-end gap-1">
                     <ActionMenu
                       label={`Actions for ${product.title}`}
-                      items={[
-                        {
-                          key: "feature",
-                          label: product.isFeatured ? "Remove from featured" : "Mark as featured",
-                          icon: Star,
-                          onSelect: () => handleToggleFeatured(product),
-                          disabled: busy,
-                          hidden: !can.edit,
-                        },
-                        {
-                          key: "restock",
-                          label: "Restock product",
-                          icon: PackagePlus,
-                          onSelect: () => setRestockProduct(product),
-                          hidden: !can.edit,
-                        },
-                        {
-                          key: "view",
-                          label: "View details",
-                          icon: Eye,
-                          href: `/dashboard/products/${product.id}`,
-                        },
-                        {
-                          key: "history",
-                          label: "View history",
-                          icon: Clock,
-                          onSelect: () => setHistoryProduct(product),
-                        },
-                        {
-                          key: "edit",
-                          label: "Edit product",
-                          icon: Pencil,
-                          onSelect: () => openEdit(product),
-                          hidden: !can.edit,
-                        },
-                        {
-                          key: "delete",
-                          label: "Delete product",
-                          icon: Trash2,
-                          onSelect: () => handleDelete(product),
-                          disabled: busy,
-                          destructive: true,
-                          hidden: !can.delete,
-                        },
-                      ] satisfies ActionMenuItem[]}
+                      items={
+                        [
+                          {
+                            key: "feature",
+                            label: product.isFeatured
+                              ? "Remove from featured"
+                              : "Mark as featured",
+                            icon: Star,
+                            onSelect: () => handleToggleFeatured(product),
+                            disabled: busy,
+                            hidden: !can.edit,
+                          },
+                          {
+                            key: "restock",
+                            label: "Restock product",
+                            icon: PackagePlus,
+                            onSelect: () => setRestockProduct(product),
+                            hidden: !can.edit,
+                          },
+                          {
+                            key: "view",
+                            label: "View details",
+                            icon: Eye,
+                            href: `/dashboard/products/${product.id}`,
+                          },
+                          {
+                            key: "history",
+                            label: "View history",
+                            icon: Clock,
+                            onSelect: () => setHistoryProduct(product),
+                          },
+                          {
+                            key: "edit",
+                            label: "Edit product",
+                            icon: Pencil,
+                            onSelect: () => openEdit(product),
+                            hidden: !can.edit,
+                          },
+                          {
+                            key: "delete",
+                            label: "Delete product",
+                            icon: Trash2,
+                            onSelect: () => handleDelete(product),
+                            disabled: busy,
+                            destructive: true,
+                            hidden: !can.delete,
+                          },
+                        ] satisfies ActionMenuItem[]
+                      }
                     />
                   </div>
                 </div>

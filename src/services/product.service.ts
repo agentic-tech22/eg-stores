@@ -162,9 +162,7 @@ export async function fetchProductWithVariants(
 ): Promise<ProductWithVariants | null> {
   const product = await fetchProductById(id);
   if (!product) return null;
-  const variantRows = product.hasVariants
-    ? await getVariantsByProduct(id)
-    : [];
+  const variantRows = product.hasVariants ? await getVariantsByProduct(id) : [];
   return { ...product, variants: variantRows.map(mapVariantRow) };
 }
 
@@ -202,7 +200,9 @@ export async function fetchProductsForPicker(): Promise<{
 
   // Per-warehouse available (stock − reserved), from a single warehouse_stock
   // read for all picker products (grouped in JS; no N+1).
-  const stockRows = await getWarehouseStockForProducts(products.map((p) => p.id));
+  const stockRows = await getWarehouseStockForProducts(
+    products.map((p) => p.id),
+  );
   const availabilityByWarehouse: WarehouseAvailability = {};
   for (const s of stockRows) {
     const bucket = (availabilityByWarehouse[s.warehouse_id] ??= {
@@ -241,7 +241,10 @@ export async function fetchProductInventory(
     ]);
 
   const warehouseNames = new Map(
-    ((whData ?? []) as { id: string; name: string }[]).map((w) => [w.id, w.name]),
+    ((whData ?? []) as { id: string; name: string }[]).map((w) => [
+      w.id,
+      w.name,
+    ]),
   );
   const variantNames = new Map(
     ((variantData ?? []) as { id: string; display_name: string }[]).map((v) => [
@@ -250,16 +253,20 @@ export async function fetchProductInventory(
     ]),
   );
 
-  return ((stockData ?? []) as {
-    warehouse_id: string;
-    variant_id: string | null;
-    stock_quantity: number;
-    reserved_quantity: number;
-  }[]).map((s) => ({
+  return (
+    (stockData ?? []) as {
+      warehouse_id: string;
+      variant_id: string | null;
+      stock_quantity: number;
+      reserved_quantity: number;
+    }[]
+  ).map((s) => ({
     warehouseId: s.warehouse_id,
     warehouseName: warehouseNames.get(s.warehouse_id) ?? "N/A",
     variantId: s.variant_id,
-    variantLabel: s.variant_id ? (variantNames.get(s.variant_id) ?? null) : null,
+    variantLabel: s.variant_id
+      ? (variantNames.get(s.variant_id) ?? null)
+      : null,
     stockQuantity: s.stock_quantity,
     reservedQuantity: s.reserved_quantity,
     available: s.stock_quantity - s.reserved_quantity,
@@ -710,11 +717,9 @@ export async function updateProduct(
     if (data.price !== undefined) updateData.price = data.price;
     if (data.costPrice !== undefined) updateData.cost_price = data.costPrice;
     if (data.imageUrl !== undefined) updateData.image_url = data.imageUrl;
-    if (data.isFeatured !== undefined)
-      updateData.is_featured = data.isFeatured;
+    if (data.isFeatured !== undefined) updateData.is_featured = data.isFeatured;
     if (data.isVisible !== undefined) updateData.is_visible = data.isVisible;
-    if (data.categoryId !== undefined)
-      updateData.category_id = data.categoryId;
+    if (data.categoryId !== undefined) updateData.category_id = data.categoryId;
     // Only overwrite the barcode when a non-empty value is supplied; a blank
     // leaves the existing (possibly auto-assigned) barcode in place.
     if (data.barcode != null && data.barcode.trim())
@@ -839,12 +844,71 @@ export async function updateProduct(
   }
 }
 
+/**
+ * Titles of the combos that include `productId` as a component.
+ *
+ * Two queries rather than one embedded select: combo_items has *two* FKs to
+ * products (combo_id and component_id), so a nested `products(title)` is
+ * ambiguous to PostgREST and has to be disambiguated by generated constraint
+ * name. Fetching the ids then the titles is longer but doesn't depend on a
+ * name Postgres chose for us.
+ *
+ * Best-effort — on a read failure it returns [] so the caller still falls back
+ * to a generic message instead of throwing over a nicety.
+ */
+async function getCombosUsingProduct(
+  supabase: ReturnType<typeof createAdminClient>,
+  productId: string,
+): Promise<string[]> {
+  const { data: items, error } = await supabase
+    .from("combo_items")
+    .select("combo_id")
+    .eq("component_id", productId);
+  if (error || !items?.length) return [];
+
+  const comboIds = [
+    ...new Set((items as { combo_id: string }[]).map((i) => i.combo_id)),
+  ];
+  const { data: combos } = await supabase
+    .from("products")
+    .select("title")
+    .in("id", comboIds);
+
+  return ((combos ?? []) as { title: string }[]).map((c) => c.title);
+}
+
+/** Plain-language "why you can't delete this yet", naming the combos. */
+function comboBlockedMessage(comboTitles: string[]): string {
+  if (comboTitles.length === 0) {
+    return "This product is part of a combo. Delete the combo first, then delete this product.";
+  }
+  // Name a few, then summarise — a product in a dozen combos shouldn't produce
+  // a toast the user has to scroll.
+  const shown = comboTitles.slice(0, 3).join(", ");
+  const rest = comboTitles.length - 3;
+  const list = rest > 0 ? `${shown} and ${rest} more` : shown;
+  const combo = comboTitles.length === 1 ? "the combo" : "the combos";
+  return `This product is used in ${combo} ${list}. Delete ${comboTitles.length === 1 ? "that combo" : "those combos"} first, then delete this product.`;
+}
+
 export async function deleteProduct(
   productId: string,
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const ctx = await requirePermission("products.delete");
     const supabase = createAdminClient();
+
+    // Refuse early if this product is a component of any combo.
+    //
+    // combo_items.component_id is ON DELETE RESTRICT — the only such FK onto
+    // products — so without this the delete fails deep in Postgres and the user
+    // gets a raw "violates foreign key constraint combo_items_component_id_fkey"
+    // that says nothing about what to do. Checking up front also keeps the
+    // audit row below from being written for a delete that never happens.
+    const blockingCombos = await getCombosUsingProduct(supabase, productId);
+    if (blockingCombos.length > 0) {
+      return { success: false, error: comboBlockedMessage(blockingCombos) };
+    }
 
     // Log a deletion audit row (with last-known total stock) BEFORE removing, so
     // the record survives. FKs on stock_movements are SET NULL, and the title is
@@ -872,6 +936,15 @@ export async function deleteProduct(
       .eq("id", productId);
 
     if (error) {
+      // A combo could have been built from this product in the moment between
+      // the check above and here. 23503 is Postgres's foreign-key violation,
+      // and component_id is the only RESTRICT FK onto products, so this can
+      // only be a combo — re-read them to name it rather than leaking the
+      // constraint text.
+      if (error.code === "23503") {
+        const combos = await getCombosUsingProduct(supabase, productId);
+        return { success: false, error: comboBlockedMessage(combos) };
+      }
       return { success: false, error: error.message };
     }
 

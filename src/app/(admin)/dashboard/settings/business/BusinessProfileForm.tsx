@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { PageHeader } from "@/components/molecules/admin";
 import {
-  Checkbox,
+  // Checkbox, // only used by the commented-out loyalty section below
   Field,
   Select,
   TextInput,
@@ -44,13 +44,16 @@ export function BusinessProfileForm({
   const [invoiceFooter, setInvoiceFooter] = useState(
     initialProfile?.invoiceFooter ?? "",
   );
-  const [loyaltyEnabled, setLoyaltyEnabled] = useState(
-    initialProfile?.loyaltyEnabled ?? false,
-  );
-  const [loyaltyEarnMode, setLoyaltyEarnMode] = useState<"percent" | "flat">(
+  // Loyalty is hidden from this form for now (see the commented-out section in
+  // the markup below), but the saved values are still read here and still go
+  // back out in handleSave untouched. Dropping them from the payload would let
+  // the next save silently reset a shop's existing loyalty config to the
+  // defaults. Only the values are bound; the setters come back with the UI.
+  const [loyaltyEnabled] = useState(initialProfile?.loyaltyEnabled ?? false);
+  const [loyaltyEarnMode] = useState<"percent" | "flat">(
     initialProfile?.loyaltyEarnMode ?? "percent",
   );
-  const [loyaltyEarnRate, setLoyaltyEarnRate] = useState(
+  const [loyaltyEarnRate] = useState(
     initialProfile ? String(initialProfile.loyaltyEarnRate) : "",
   );
 
@@ -215,68 +218,76 @@ export function BusinessProfileForm({
             </Field>
           </div>
 
-          <div className="border-admin-border mt-8 border-t pt-6">
-            <p className="text-admin-text-muted text-[11px] font-bold tracking-[0.15em] uppercase">
-              Loyalty program
-            </p>
-            <p className="text-admin-text-muted mt-1 mb-4 text-sm">
-              When enabled, POS sales recorded with a customer phone number
-              automatically earn loyalty points.
-            </p>
+          {/* Loyalty program — hidden for now; uncomment to bring it back.
+              The saved loyaltyEnabled / loyaltyEarnMode / loyaltyEarnRate values
+              are still loaded and still written back on save (see the note by
+              their useState calls above), so turning this section back on shows
+              whatever the shop already had rather than the defaults. Restoring
+              it also means restoring the three setters.
 
-            <Checkbox
-              label="Enable loyalty points"
-              description="Auto-earn points on point-of-sale transactions."
-              checked={loyaltyEnabled}
-              onChange={(e) => setLoyaltyEnabled(e.target.checked)}
-            />
+            <div className="border-admin-border mt-8 border-t pt-6">
+              <p className="text-admin-text-muted text-[11px] font-bold tracking-[0.15em] uppercase">
+                Loyalty program
+              </p>
+              <p className="text-admin-text-muted mt-1 mb-4 text-sm">
+                When enabled, POS sales recorded with a customer phone number
+                automatically earn loyalty points.
+              </p>
 
-            {loyaltyEnabled && (
-              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <Field
-                  label="Earning mode"
-                  hint="How points accrue on each sale."
-                >
-                  {(p) => (
-                    <Select
-                      value={loyaltyEarnMode}
-                      onChange={(e) =>
-                        setLoyaltyEarnMode(e.target.value as "percent" | "flat")
-                      }
-                      {...p}
-                    >
-                      <option value="percent">Percent of sale total</option>
-                      <option value="flat">Flat points per sale</option>
-                    </Select>
-                  )}
-                </Field>
-                <Field
-                  label={
-                    loyaltyEarnMode === "percent"
-                      ? "Points rate (% of total)"
-                      : "Points per sale"
-                  }
-                  hint={
-                    loyaltyEarnMode === "percent"
-                      ? "e.g. 5 → a 1,000 sale earns 50 points."
-                      : "e.g. 10 → every sale earns 10 points."
-                  }
-                >
-                  {(p) => (
-                    <TextInput
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={loyaltyEarnRate}
-                      onChange={(e) => setLoyaltyEarnRate(e.target.value)}
-                      placeholder="0"
-                      {...p}
-                    />
-                  )}
-                </Field>
-              </div>
-            )}
-          </div>
+              <Checkbox
+                label="Enable loyalty points"
+                description="Auto-earn points on point-of-sale transactions."
+                checked={loyaltyEnabled}
+                onChange={(e) => setLoyaltyEnabled(e.target.checked)}
+              />
+
+              {loyaltyEnabled && (
+                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <Field
+                    label="Earning mode"
+                    hint="How points accrue on each sale."
+                  >
+                    {(p) => (
+                      <Select
+                        value={loyaltyEarnMode}
+                        onChange={(e) =>
+                          setLoyaltyEarnMode(e.target.value as "percent" | "flat")
+                        }
+                        {...p}
+                      >
+                        <option value="percent">Percent of sale total</option>
+                        <option value="flat">Flat points per sale</option>
+                      </Select>
+                    )}
+                  </Field>
+                  <Field
+                    label={
+                      loyaltyEarnMode === "percent"
+                        ? "Points rate (% of total)"
+                        : "Points per sale"
+                    }
+                    hint={
+                      loyaltyEarnMode === "percent"
+                        ? "e.g. 5 → a 1,000 sale earns 50 points."
+                        : "e.g. 10 → every sale earns 10 points."
+                    }
+                  >
+                    {(p) => (
+                      <TextInput
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={loyaltyEarnRate}
+                        onChange={(e) => setLoyaltyEarnRate(e.target.value)}
+                        placeholder="0"
+                        {...p}
+                      />
+                    )}
+                  </Field>
+                </div>
+              )}
+            </div>
+          */}
 
           <div className="mt-6 flex justify-end">
             <button

@@ -21,7 +21,13 @@ import {
   ActionMenu,
   type ActionMenuItem,
 } from "@/components/molecules/action-menu/ActionMenu";
-import { EmptyState, PageHeader, Pagination, StatCard, TableRowsSkeleton } from "@/components/molecules/admin";
+import {
+  EmptyState,
+  PageHeader,
+  Pagination,
+  StatCard,
+  TableRowsSkeleton,
+} from "@/components/molecules/admin";
 import { deleteProductImage } from "@/services/upload.service";
 import { notify } from "@/lib/toast";
 import type { ComboWithItems, Product } from "@/types/product.types";
@@ -85,7 +91,7 @@ export function ComboManager({
       description: (
         <>
           Delete{" "}
-          <span className="font-semibold text-admin-text">{combo.title}</span>?
+          <span className="text-admin-text font-semibold">{combo.title}</span>?
           This removes the combo and its images. Component products are not
           affected. This cannot be undone.
         </>
@@ -95,10 +101,19 @@ export function ComboManager({
     });
     if (!ok) return;
 
-    if (combo.imageUrl) await deleteProductImage(combo.imageUrl);
-    for (const img of combo.images ?? []) await deleteProductImage(img);
     deleteCombo.mutate(combo.id, {
-      onSuccess: () => notify.success("Combo deleted."),
+      onSuccess: () => {
+        notify.success("Combo deleted.");
+        // Images are cleaned up only once the row is actually gone, so a failed
+        // delete can't leave a surviving combo pointing at deleted files. Not
+        // awaited: the record is deleted either way, so a slow storage call
+        // shouldn't hold up the toast.
+        void Promise.all(
+          [combo.imageUrl, ...(combo.images ?? [])]
+            .filter((url): url is string => Boolean(url))
+            .map((url) => deleteProductImage(url)),
+        );
+      },
     });
   }
 
@@ -106,7 +121,9 @@ export function ComboManager({
 
   function savingsPct(combo: ComboWithItems): number {
     if (combo.originalPrice <= 0) return 0;
-    return Math.round(((combo.originalPrice - combo.price) / combo.originalPrice) * 100);
+    return Math.round(
+      ((combo.originalPrice - combo.price) / combo.originalPrice) * 100,
+    );
   }
 
   return (
@@ -120,7 +137,7 @@ export function ComboManager({
             <button
               type="button"
               onClick={openCreate}
-              className="flex cursor-pointer items-center gap-2 rounded-xl bg-admin-accent px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-admin-accent-hover"
+              className="bg-admin-accent hover:bg-admin-accent-hover flex cursor-pointer items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-colors"
             >
               <Plus className="h-4 w-4" strokeWidth={2.5} />
               Add Combo
@@ -140,8 +157,8 @@ export function ComboManager({
         />
       </div>
 
-      <div className="mb-6 flex h-11 items-center gap-2 rounded-xl border border-admin-border bg-admin-surface px-3.5">
-        <Search className="h-4 w-4 shrink-0 text-admin-text-muted" />
+      <div className="border-admin-border bg-admin-surface mb-6 flex h-11 items-center gap-2 rounded-xl border px-3.5">
+        <Search className="text-admin-text-muted h-4 w-4 shrink-0" />
         <input
           type="text"
           value={filterText}
@@ -151,7 +168,7 @@ export function ComboManager({
           }}
           placeholder="Search combos by name..."
           aria-label="Filter combos by name"
-          className="h-full w-full bg-transparent text-sm text-admin-text placeholder:text-admin-text-muted focus:outline-none"
+          className="text-admin-text placeholder:text-admin-text-muted h-full w-full bg-transparent text-sm focus:outline-none"
         />
       </div>
 
@@ -165,7 +182,7 @@ export function ComboManager({
               <button
                 type="button"
                 onClick={openCreate}
-                className="flex cursor-pointer items-center gap-2 rounded-xl bg-admin-accent px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-admin-accent-hover"
+                className="bg-admin-accent hover:bg-admin-accent-hover flex cursor-pointer items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold text-white transition-colors"
               >
                 <Plus className="h-4 w-4" strokeWidth={2.5} />
                 Add Combo
@@ -174,51 +191,72 @@ export function ComboManager({
           }
         />
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-admin-border bg-admin-surface">
-          <div className="hidden border-b border-admin-border bg-admin-card/40 px-5 py-3 sm:grid sm:grid-cols-12 sm:items-center sm:gap-4">
-            <p className="col-span-1 text-[10px] font-bold uppercase tracking-[0.15em] text-admin-text-muted">S.N</p>
-            <p className="col-span-3 text-[10px] font-bold uppercase tracking-[0.15em] text-admin-text-muted">Combo</p>
-            <p className="col-span-3 text-[10px] font-bold uppercase tracking-[0.15em] text-admin-text-muted">Price</p>
-            <p className="col-span-2 text-[10px] font-bold uppercase tracking-[0.15em] text-admin-text-muted">Stock</p>
-            <p className="col-span-1 text-[10px] font-bold uppercase tracking-[0.15em] text-admin-text-muted">Status</p>
-            <p className="col-span-2 text-right text-[10px] font-bold uppercase tracking-[0.15em] text-admin-text-muted">Actions</p>
+        <div className="border-admin-border bg-admin-surface overflow-hidden rounded-2xl border">
+          <div className="border-admin-border bg-admin-card/40 hidden border-b px-5 py-3 sm:grid sm:grid-cols-12 sm:items-center sm:gap-4">
+            <p className="text-admin-text-muted col-span-1 text-[10px] font-bold tracking-[0.15em] uppercase">
+              S.N
+            </p>
+            <p className="text-admin-text-muted col-span-3 text-[10px] font-bold tracking-[0.15em] uppercase">
+              Combo
+            </p>
+            <p className="text-admin-text-muted col-span-3 text-[10px] font-bold tracking-[0.15em] uppercase">
+              Price
+            </p>
+            <p className="text-admin-text-muted col-span-2 text-[10px] font-bold tracking-[0.15em] uppercase">
+              Stock
+            </p>
+            <p className="text-admin-text-muted col-span-1 text-[10px] font-bold tracking-[0.15em] uppercase">
+              Status
+            </p>
+            <p className="text-admin-text-muted col-span-2 text-right text-[10px] font-bold tracking-[0.15em] uppercase">
+              Actions
+            </p>
           </div>
 
           {isFetching && combos.length === 0 ? (
             <TableRowsSkeleton />
           ) : filtered.length === 0 ? (
-            <div className="px-5 py-12 text-center text-sm text-admin-text-muted">
+            <div className="text-admin-text-muted px-5 py-12 text-center text-sm">
               No combos match &ldquo;{filterText}&rdquo;.
             </div>
           ) : (
-            <div className="divide-y divide-admin-border">
+            <div className="divide-admin-border divide-y">
               {paginated.map((combo, i) => (
                 <div
                   key={combo.id}
-                  className="grid grid-cols-1 gap-3 px-5 py-3.5 transition-colors hover:bg-admin-card/30 sm:grid-cols-12 sm:items-center sm:gap-4"
+                  className="hover:bg-admin-card/30 grid grid-cols-1 gap-3 px-5 py-3.5 transition-colors sm:grid-cols-12 sm:items-center sm:gap-4"
                 >
                   {/* S.N */}
-                  <div className="col-span-1 text-sm font-bold text-admin-text-muted">
+                  <div className="text-admin-text-muted col-span-1 text-sm font-bold">
                     {(safePage - 1) * ITEMS_PER_PAGE + i + 1}
                   </div>
 
                   {/* Combo */}
                   <div className="col-span-3 flex items-center gap-3">
-                    <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-admin-border bg-admin-card">
+                    <div className="border-admin-border bg-admin-card h-12 w-12 shrink-0 overflow-hidden rounded-xl border">
                       {combo.imageUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={combo.imageUrl} alt={combo.title} className="h-full w-full object-cover" />
+                        <img
+                          src={combo.imageUrl}
+                          alt={combo.title}
+                          className="h-full w-full object-cover"
+                        />
                       ) : (
-                        <div className="flex h-full w-full items-center justify-center text-admin-text-muted">
+                        <div className="text-admin-text-muted flex h-full w-full items-center justify-center">
                           <ImageIcon className="h-5 w-5" />
                         </div>
                       )}
                     </div>
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-bold text-admin-text">{combo.title}</p>
-                      <p className="truncate text-[11px] text-admin-text-muted">
+                      <p className="text-admin-text truncate text-sm font-bold">
+                        {combo.title}
+                      </p>
+                      <p className="text-admin-text-muted truncate text-[11px]">
                         {combo.items
-                          .map((it) => `${it.quantity}× ${it.component?.title ?? "N/A"}`)
+                          .map(
+                            (it) =>
+                              `${it.quantity}× ${it.component?.title ?? "N/A"}`,
+                          )
                           .join(", ")}
                       </p>
                     </div>
@@ -226,15 +264,23 @@ export function ComboManager({
 
                   {/* Price */}
                   <div className="col-span-3 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                    <span className="inline-flex shrink-0 rounded-lg bg-admin-card px-2.5 py-1 text-xs font-bold text-admin-text">
-                      {formatCurrency(combo.price, currency.code, currency.locale)}
+                    <span className="bg-admin-card text-admin-text inline-flex shrink-0 rounded-lg px-2.5 py-1 text-xs font-bold">
+                      {formatCurrency(
+                        combo.price,
+                        currency.code,
+                        currency.locale,
+                      )}
                     </span>
                     {combo.originalPrice > combo.price && (
                       <>
-                        <span className="shrink-0 text-[11px] text-admin-text-muted line-through">
-                          {formatCurrency(combo.originalPrice, currency.code, currency.locale)}
+                        <span className="text-admin-text-muted shrink-0 text-[11px] line-through">
+                          {formatCurrency(
+                            combo.originalPrice,
+                            currency.code,
+                            currency.locale,
+                          )}
                         </span>
-                        <span className="inline-flex shrink-0 items-center rounded-full bg-admin-success/12 px-2 py-0.5 text-[10px] font-bold text-admin-success">
+                        <span className="bg-admin-success/12 text-admin-success inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-bold">
                           -{savingsPct(combo)}%
                         </span>
                       </>
@@ -243,20 +289,24 @@ export function ComboManager({
 
                   {/* Stock (derived) */}
                   <div className="col-span-2">
-                    <span className="text-sm font-bold text-admin-text">{combo.comboAvailable}</span>
-                    <span className="ml-1.5 text-[11px] text-admin-text-muted">available</span>
+                    <span className="text-admin-text text-sm font-bold">
+                      {combo.comboAvailable}
+                    </span>
+                    <span className="text-admin-text-muted ml-1.5 text-[11px]">
+                      available
+                    </span>
                   </div>
 
                   {/* Status */}
                   <div className="col-span-1 flex flex-col gap-1">
                     {combo.isFeatured && (
-                      <span className="inline-flex w-fit items-center gap-1 rounded-full bg-admin-accent/12 px-2 py-0.5 text-[10px] font-bold text-admin-accent">
+                      <span className="bg-admin-accent/12 text-admin-accent inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold">
                         <Star className="h-3 w-3" fill="currentColor" />
                         Featured
                       </span>
                     )}
                     {!combo.isVisible && (
-                      <span className="inline-flex w-fit items-center gap-1 rounded-full bg-admin-text-muted/15 px-2 py-0.5 text-[10px] font-bold text-admin-text-muted">
+                      <span className="bg-admin-text-muted/15 text-admin-text-muted inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold">
                         <EyeOff className="h-3 w-3" />
                         Hidden
                       </span>
@@ -266,38 +316,42 @@ export function ComboManager({
                   {/* Actions */}
                   <div className="col-span-2 flex items-center justify-end gap-1">
                     {!can.edit && !can.delete && (
-                      <span className="text-[11px] italic text-admin-text-muted">View only</span>
+                      <span className="text-admin-text-muted text-[11px] italic">
+                        View only
+                      </span>
                     )}
                     <ActionMenu
                       label={`Actions for ${combo.title}`}
-                      items={[
-                        {
-                          key: "feature",
-                          label: combo.isFeatured
-                            ? "Remove from featured"
-                            : "Mark as featured",
-                          icon: Star,
-                          onSelect: () => handleToggleFeatured(combo),
-                          disabled: busy,
-                          hidden: !can.edit,
-                        },
-                        {
-                          key: "edit",
-                          label: "Edit combo",
-                          icon: Pencil,
-                          onSelect: () => openEdit(combo),
-                          hidden: !can.edit,
-                        },
-                        {
-                          key: "delete",
-                          label: "Delete combo",
-                          icon: Trash2,
-                          onSelect: () => handleDelete(combo),
-                          disabled: busy,
-                          destructive: true,
-                          hidden: !can.delete,
-                        },
-                      ] satisfies ActionMenuItem[]}
+                      items={
+                        [
+                          {
+                            key: "feature",
+                            label: combo.isFeatured
+                              ? "Remove from featured"
+                              : "Mark as featured",
+                            icon: Star,
+                            onSelect: () => handleToggleFeatured(combo),
+                            disabled: busy,
+                            hidden: !can.edit,
+                          },
+                          {
+                            key: "edit",
+                            label: "Edit combo",
+                            icon: Pencil,
+                            onSelect: () => openEdit(combo),
+                            hidden: !can.edit,
+                          },
+                          {
+                            key: "delete",
+                            label: "Delete combo",
+                            icon: Trash2,
+                            onSelect: () => handleDelete(combo),
+                            disabled: busy,
+                            destructive: true,
+                            hidden: !can.delete,
+                          },
+                        ] satisfies ActionMenuItem[]
+                      }
                     />
                   </div>
                 </div>
