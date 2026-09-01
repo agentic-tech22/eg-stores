@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  # Fast guard that runs on every push/PR: types, lint, and the DB-free unit tests.
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      # Lint is advisory for now: the repo has pre-existing lint debt unrelated to
+      # tests. Keep it visible but non-blocking until that debt is cleared, then
+      # drop `continue-on-error` to make it a hard gate.
+      - run: pnpm lint
+        continue-on-error: true
+      - run: pnpm test:unit
+
+  # Integration tests against a local Supabase (Postgres RPCs: stock, invoice #s).
+  # Kept separate so a slow/failing DB job never blocks the fast `check` feedback.
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Start local Supabase and load schema
+        run: pnpm test:db:up
+
+      - name: Run integration tests
+        run: pnpm test:integration
+
+      - name: Stop local Supabase
+        if: always()
+        run: pnpm test:db:down

@@ -1,0 +1,19 @@
+<svg width="444" height="120" viewBox="0 0 444 120" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="EG Stores — Point of Sale">
+  <defs>
+    <linearGradient id="eg-tile" x1="0" y1="0" x2="444" y2="120" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7c5cff"/>
+      <stop offset="1" stop-color="#22d3ee"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="444" height="120" rx="20" fill="url(#eg-tile)"/>
+
+  <!-- Translucent badge -->
+  <rect x="24" y="20" width="80" height="80" rx="22" fill="#ffffff" fill-opacity="0.16"/>
+  <text x="64" y="73" text-anchor="middle"
+        font-family="'Outfit','Segoe UI',Roboto,system-ui,-apple-system,sans-serif"
+        font-size="34" font-weight="800" letter-spacing="-1.6" fill="#ffffff">EG</text>
+
+  <text x="128" y="58" font-family="'Outfit','Segoe UI',Roboto,system-ui,sans-serif" font-size="40" font-weight="700" letter-spacing="-1" fill="#ffffff">EG Stores</text>
+  <text x="130" y="86" font-family="'Outfit','Segoe UI',Roboto,system-ui,sans-serif" font-size="15" font-weight="600" letter-spacing="5.5" fill="#ffffff" fill-opacity="0.6">POINT OF SALE</text>
+</svg>

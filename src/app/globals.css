@@ -1,0 +1,753 @@
+@import "tailwindcss";
+
+:root {
+  /* ===== EG Stores storefront theme (overridable from Supabase) =====
+     The public shop stays light; the dashboard has its own dark palette in the
+     `--admin-*` block below. */
+  --theme-primary: #4f46e5; /* indigo-600, main brand */
+  --theme-secondary: #7c3aed; /* violet-600, accent / brand highlight */
+  --theme-background: #ffffff;
+  --theme-surface: #f6f6fd; /* faint indigo tint */
+  --theme-text-primary: #1e1b2e; /* near-black indigo */
+  --theme-text-secondary: #56536b;
+  --theme-text-muted: #9ca3af;
+  --theme-accent: #06b6d4; /* cyan, decorative gradients / glows */
+
+  /* ===== Derived Colors ===== */
+  --theme-border: #e6e7f1;
+  --theme-input: #e6e7f1;
+  --theme-ring: var(--theme-primary);
+  --theme-destructive: #dc2626;
+  --theme-destructive-foreground: #ffffff;
+
+  /* Design Tokens (overridable from Supabase) */
+  --radius: 0.75rem;
+  --spacing-scale: 1;
+  --theme-font-family: Work Sans;
+
+  /* Font mapping: maps font name to CSS variable */
+  --font-sans: var(--font-work-sans);
+  --font-heading: var(--font-outfit);
+}
+
+/* ===== EG Stores dashboard palette =====
+   The dashboard is a two-tone shell: a dark navigation rail against a light
+   working area. So there are two palettes here, and the split matters —
+
+   `--admin-*` is the CONTENT palette (light). Everything in the working area
+   reads from it: pages, cards, tables, modals, forms, and every Radix portal.
+
+   `--admin-sidebar-*` is the CHROME palette (dark), and it is self-contained:
+   the rail carries its own surface, border, text, muted and accent tones
+   rather than borrowing the content ones, because on the rail those would be
+   near-white paper on near-black. Anything rendered inside the <aside> must
+   use a sidebar token — reaching for `--admin-text` or `--admin-border` there
+   is the one way to break this theme.
+
+   Both live on :root rather than behind a toggle, which is also what lets
+   portalled dialogs and dropdowns — rendered into <body>, outside the shell —
+   inherit the content palette for free.
+
+   Kept independent of the --theme-* tokens above: the storefront is a
+   customer-facing shop and re-skinning it from Supabase must never drag the
+   operator's dashboard along with it. */
+:root {
+  /* ----- Content: surfaces. Three planes, page < card < raised fill, so a
+     modal over a card over the page reads as depth without borders doing all
+     the work. ----- */
+  --admin-bg: #f6f7fb; /* page: faint cool gray, not pure white */
+  --admin-surface: #ffffff; /* cards, top bar, modals */
+  --admin-card: #f1f3f9; /* raised fill: inputs, table headers, hovers */
+  --admin-border: #e3e6ef;
+  --admin-border-subtle: #eef0f6;
+
+  /* Content text: three steps of emphasis, all AA on --admin-surface. */
+  --admin-text: #12141b;
+  --admin-text-secondary: #525c6e;
+  --admin-text-muted: #858e9f;
+
+  /* Brand accent. Darker than the rail's violet so it holds contrast as text
+     and as a small icon on white; the hover state goes darker, the way it
+     should on a light ground. */
+  --admin-accent: #6b4eff;
+  --admin-accent-hover: #5839e8;
+  --admin-accent-light: #f0edff; /* accent at ~10% over white */
+  --admin-glow: #06b6d4; /* cyan, for gradients and brand marks */
+
+  /* Semantic status, tuned for the light content area. */
+  --admin-success: #059669;
+  --admin-warning: #d97706;
+  --admin-danger: #dc2626;
+
+  /* ----- Chrome: the navigation rail. Self-contained dark set. ----- */
+  --admin-sidebar: #0b0d13;
+  --admin-sidebar-raised: #161a24; /* the user card */
+  --admin-sidebar-border: #1e2230;
+  --admin-sidebar-hover: rgba(255, 255, 255, 0.055);
+  --admin-sidebar-text: #98a1b5;
+  --admin-sidebar-text-active: #ffffff;
+  --admin-sidebar-muted: #666f80; /* section labels, subtitles */
+  /* Lighter than --admin-accent: the content accent is mixed for white and
+     goes muddy against near-black. */
+  --admin-sidebar-accent: #8b7bff;
+  --admin-sidebar-danger: #f87171;
+}
+
+/* Dynamic font family: switches --font-sans based on --theme-font-family */
+:root[style*="--theme-font-family: Inter"],
+:root [style*="--theme-font-family: Inter"] {
+  --font-sans: var(--font-inter);
+}
+
+:root[style*="--theme-font-family: Outfit"],
+:root [style*="--theme-font-family: Outfit"] {
+  --font-sans: var(--font-outfit);
+}
+
+:root[style*="--theme-font-family: Poppins"],
+:root [style*="--theme-font-family: Poppins"] {
+  --font-sans: var(--font-poppins);
+}
+
+:root[style*="--theme-font-family: Playfair Display"],
+:root [style*="--theme-font-family: Playfair Display"] {
+  --font-sans: var(--font-playfair);
+}
+
+:root[style*="--theme-font-family: JetBrains Mono"],
+:root [style*="--theme-font-family: JetBrains Mono"] {
+  --font-sans: var(--font-jetbrains);
+}
+
+:root[style*="--theme-font-family: system-ui"],
+:root [style*="--theme-font-family: system-ui"] {
+  --font-sans: system-ui;
+}
+
+@theme inline {
+  /* Core theme tokens */
+  --color-primary: var(--theme-primary);
+  --color-secondary: var(--theme-secondary);
+  --color-background: var(--theme-background);
+  --color-surface: var(--theme-surface);
+  --color-text-primary: var(--theme-text-primary);
+  --color-text-secondary: var(--theme-text-secondary);
+  --color-accent: var(--theme-accent);
+
+  /* Derived tokens */
+  --color-border: var(--theme-border);
+  --color-input: var(--theme-input);
+  --color-ring: var(--theme-ring);
+  --color-muted: var(--theme-surface);
+  --color-muted-foreground: var(--theme-text-secondary);
+  --color-destructive: var(--theme-destructive);
+  --color-destructive-foreground: var(--theme-destructive-foreground);
+
+  /* shadcn bridge tokens */
+  --color-foreground: var(--theme-text-primary);
+  --color-card: var(--theme-background);
+  --color-card-foreground: var(--theme-text-primary);
+  --color-popover: var(--theme-background);
+  --color-popover-foreground: var(--theme-text-primary);
+  --color-primary-foreground: #ffffff;
+  --color-secondary-foreground: #ffffff;
+  --color-accent-foreground: var(--theme-text-primary);
+
+  /* ===== Admin Dashboard =====
+     Straight passthroughs of the --admin-* palette defined at the top of the
+     file. Retune the dashboard there; nothing below needs touching. */
+
+  /* Surfaces */
+  --color-admin-bg: var(--admin-bg);
+  --color-admin-surface: var(--admin-surface);
+  --color-admin-card: var(--admin-card);
+  --color-admin-border: var(--admin-border);
+  --color-admin-border-subtle: var(--admin-border-subtle);
+
+  /* Text */
+  --color-admin-text: var(--admin-text);
+  --color-admin-text-secondary: var(--admin-text-secondary);
+  --color-admin-text-muted: var(--admin-text-muted);
+
+  /* Accent */
+  --color-admin-accent: var(--admin-accent);
+  --color-admin-accent-hover: var(--admin-accent-hover);
+  --color-admin-accent-light: var(--admin-accent-light);
+  --color-admin-glow: var(--admin-glow);
+
+  /* Semantic status colors */
+  --color-admin-success: var(--admin-success);
+  --color-admin-warning: var(--admin-warning);
+  --color-admin-danger: var(--admin-danger);
+
+  /* Inputs */
+  --color-admin-input: var(--admin-border);
+  --color-admin-input-focus: var(--admin-accent);
+
+  /* Sidebar (dark chrome — see the palette note at the top of the file) */
+  --color-admin-sidebar: var(--admin-sidebar);
+  --color-admin-sidebar-raised: var(--admin-sidebar-raised);
+  --color-admin-sidebar-border: var(--admin-sidebar-border);
+  --color-admin-sidebar-hover: var(--admin-sidebar-hover);
+  --color-admin-sidebar-text: var(--admin-sidebar-text);
+  --color-admin-sidebar-text-active: var(--admin-sidebar-text-active);
+  --color-admin-sidebar-muted: var(--admin-sidebar-muted);
+  --color-admin-sidebar-accent: var(--admin-sidebar-accent);
+  --color-admin-sidebar-danger: var(--admin-sidebar-danger);
+
+  /* Radius */
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 6px);
+
+  /* Font */
+  --font-sans: var(--font-sans);
+  --font-heading: var(--font-heading);
+
+  /* Animations */
+  --animate-in: enter 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-out: exit 0.2s cubic-bezier(0.7, 0, 0.84, 0);
+  --animate-accordion-down: accordion-down 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-accordion-up: accordion-up 0.2s cubic-bezier(0.7, 0, 0.84, 0);
+
+  /* Landing-page motion */
+  --animate-aurora: aurora 18s ease-in-out infinite;
+  --animate-float: float 7s ease-in-out infinite;
+  --animate-float-slow: float 11s ease-in-out infinite;
+  --animate-marquee: marquee 32s linear infinite;
+  --animate-shimmer: shimmer 2.5s linear infinite;
+  --animate-spin-slow: spin 26s linear infinite;
+}
+
+@keyframes enter {
+  from {
+    opacity: var(--tw-enter-opacity, 1);
+    transform: translate3d(
+        var(--tw-enter-translate-x, 0),
+        var(--tw-enter-translate-y, 0),
+        0
+      )
+      scale3d(
+        var(--tw-enter-scale, 1),
+        var(--tw-enter-scale, 1),
+        var(--tw-enter-scale, 1)
+      )
+      rotate(var(--tw-enter-rotate, 0));
+  }
+}
+
+@keyframes exit {
+  to {
+    opacity: var(--tw-exit-opacity, 1);
+    transform: translate3d(
+        var(--tw-exit-translate-x, 0),
+        var(--tw-exit-translate-y, 0),
+        0
+      )
+      scale3d(
+        var(--tw-exit-scale, 1),
+        var(--tw-exit-scale, 1),
+        var(--tw-exit-scale, 1)
+      )
+      rotate(var(--tw-exit-rotate, 0));
+  }
+}
+
+@keyframes accordion-down {
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--radix-accordion-content-height);
+  }
+}
+
+@keyframes accordion-up {
+  from {
+    height: var(--radix-accordion-content-height);
+  }
+  to {
+    height: 0;
+  }
+}
+
+/* ===== Landing-page keyframes ===== */
+@keyframes aurora {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  33% {
+    transform: translate3d(6%, -4%, 0) scale(1.12);
+  }
+  66% {
+    transform: translate3d(-5%, 5%, 0) scale(0.95);
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-14px);
+  }
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: -200% 0;
+  }
+  to {
+    background-position: 200% 0;
+  }
+}
+
+/* ===== Scroll reveal (IntersectionObserver toggles [data-reveal]) ===== */
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(28px);
+  transition:
+    opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+  will-change: opacity, transform;
+}
+
+[data-reveal="visible"] {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  [data-reveal] {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-color: var(--theme-background);
+  color: var(--theme-text-primary);
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+/* ===== Dashboard shell: page chrome =====
+   The working area is light, but it is not the same light as the storefront —
+   `--admin-bg` is a faint cool gray where the shop is pure white. The document
+   itself has to carry it, not just the shell, because of what the shell can't
+   reach: the paint before hydration, and the rubber-band area past the end of
+   a long table. `:has()` because the root layout is shared with the storefront
+   and can't know which route group is rendering. */
+html:has(.admin-root),
+body:has(.admin-root) {
+  background-color: var(--admin-bg);
+  color: var(--admin-text);
+}
+
+/* A single wide, very low-contrast wash of brand light across the top of the
+   working area — enough that a full screen of pale gray isn't dead flat, faint
+   enough that nothing on top of it has to fight.
+
+   Literal rgba rather than color-mix() of the tokens: the build emits a
+   full-strength fallback ahead of every color-mix declaration for browsers
+   that lack it, and at full strength these two stops stop being a wash and
+   become solid violet and cyan blobs. The subtler color-mix uses elsewhere
+   degrade harmlessly; this one does not. Values are --admin-accent at 5% and
+   --admin-glow at 3.5%.
+
+   It's a background-image on the shell rather than a `::before` overlay: an
+   element's background always paints behind its content, whereas a positioned
+   pseudo-element paints *above* every unpositioned child, so the overlay
+   version would quietly cover the card on any admin screen whose content isn't
+   explicitly positioned. `fixed` attachment keeps it still while a long table
+   scrolls under it. */
+.admin-root {
+  background-image:
+    radial-gradient(
+      60rem 40rem at 18% -12%,
+      rgba(107, 78, 255, 0.05),
+      transparent 60%
+    ),
+    radial-gradient(
+      48rem 34rem at 105% 2%,
+      rgba(6, 182, 212, 0.035),
+      transparent 60%
+    );
+  background-attachment: fixed;
+}
+
+@media print {
+  .admin-root {
+    background-image: none;
+  }
+}
+
+/* The navigation rail is near-black, so the app-wide gray thumb disappears on
+   it. Scoped to the rail alone — the light working area keeps the default. */
+.sidebar-scroll {
+  scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+}
+
+::selection {
+  background-color: var(--theme-secondary);
+  color: #ffffff;
+}
+
+body:has(.admin-root) ::selection {
+  background-color: color-mix(in srgb, var(--admin-accent) 55%, transparent);
+  color: #ffffff;
+}
+
+/* ===== Paper =====
+   Surfaces that exist to be printed — the membership card, the 80 mm receipt —
+   are ink on white wherever they appear, including on screen inside the dark
+   dashboard. They opt out of the theme entirely rather than inheriting it,
+   because a near-white `--admin-text` on `bg-white` is invisible and the print
+   rules would silently paper over it (the printed sheet looks right; the
+   preview the user actually checks does not).
+
+   Two tones only, matching what a thermal printer can render. */
+/* In the `components` layer so a utility on the same element still wins — an
+   unlayered rule here would quietly outrank every `bg-*` and `text-*` class. */
+@layer components {
+  .paper {
+    background-color: #ffffff;
+    color: #12141b;
+  }
+
+  .paper-muted {
+    color: #55606f;
+  }
+}
+
+/* ===== Themed scrollbars ===== */
+/* App-wide subtle brand scrollbar. Firefox uses scrollbar-color (thumb track);
+   WebKit/Blink uses the ::-webkit-scrollbar pseudo-elements below. Both derive
+   from the theme tokens, so re-skinning the theme re-skins the scrollbars. */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--theme-text-muted) 55%, transparent)
+    transparent;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--theme-text-muted) 45%, transparent)
+    transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: color-mix(
+    in srgb,
+    var(--theme-text-muted) 45%,
+    transparent
+  );
+  border-radius: 9999px;
+  /* Inset the thumb so it looks like a slim pill inside the gutter. */
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in srgb, var(--theme-primary) 70%, transparent);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.22);
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.4);
+}
+
+/* ===== NProgress: theme-aware ===== */
+#nprogress {
+  pointer-events: none;
+}
+
+#nprogress .bar {
+  background: var(--theme-secondary);
+  position: fixed;
+  z-index: 9999;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+}
+
+#nprogress .peg {
+  display: block;
+  position: absolute;
+  right: 0;
+  width: 100px;
+  height: 100%;
+  box-shadow:
+    0 0 10px var(--theme-secondary),
+    0 0 5px var(--theme-secondary);
+  opacity: 1;
+  transform: rotate(3deg) translate(0px, -4px);
+}
+
+/* The route-progress bar is rendered by the root layout, above both themes, so
+   it picks up the dashboard accent only while a dashboard screen is mounted. */
+body:has(.admin-root) #nprogress .bar {
+  background: var(--admin-accent);
+}
+
+body:has(.admin-root) #nprogress .peg {
+  box-shadow:
+    0 0 10px var(--admin-accent),
+    0 0 5px var(--admin-accent);
+}
+
+/* ===== Global loader overlay: soft fade-in so it never snaps in ===== */
+.global-loader-overlay {
+  animation: global-loader-fade-in 160ms ease-out;
+}
+
+@keyframes global-loader-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ===== Barcode label printing =====
+   Sized for the 34 x 20 mm three-across label roll: the page is exactly three
+   labels wide (102 mm) with zero page margin and zero gap between labels, so
+   every cell lands on its die-cut. Length is continuous: the roll feeds as
+   many rows as the sheet needs. */
+@media print {
+  /* The default page keeps the browser's own paper size: this rule is inherited
+     by every printable screen in the dashboard, so pinning it to the label roll
+     would drag a customer list or an analytics page onto a 102 mm page too.
+     The label sheet and the receipt opt into their own named pages below. */
+  @page {
+    margin: 0;
+  }
+
+  /* The barcode label roll: one page per ROW of labels, so the paper is exactly
+     three 34 mm labels across by one 20 mm label tall and the roll advances a
+     row at a time. Nothing spare on any edge.
+
+     Both lengths are fixed on purpose. `size: 102mm auto` is not valid CSS —
+     the grammar takes `<length>{1,2} | auto | <page-size>`, never a length
+     paired with `auto` — so a browser drops the whole declaration and falls
+     back to A4, printing the labels in the corner of a full sheet. */
+  @page barcode-roll {
+    size: 102mm 20mm;
+    margin: 0;
+  }
+
+  /* Print the sheet and nothing else.
+
+     The labels sit deep inside the dashboard shell, and the shell's own boxes
+     (a min-height column, a padded <main>) keep their height even when their
+     contents are hidden — each one adding a blank page before or after the
+     labels. So: hide every element that is not the sheet, inside it, or an
+     ancestor of it, then collapse the ancestors that are left onto the sheet.
+
+     `display: none` rather than the `visibility: hidden` + `position: fixed`
+     trick the membership card uses: fixed content repeats on every page, which
+     for a multi-row label run would reprint row one on all of them. */
+  body:has(.barcode-sheet) {
+    page: barcode-roll;
+  }
+
+  body:has(.barcode-sheet)
+    *:not(:has(.barcode-sheet)):not(.barcode-sheet):not(.barcode-sheet *) {
+    display: none;
+  }
+
+  body:has(.barcode-sheet) :has(.barcode-sheet) {
+    display: block;
+    width: auto;
+    min-width: 0;
+    height: auto;
+    min-height: 0;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  /* ===== 80 mm thermal receipt (invoices) =====
+     A named page so it does not collide with the 102 mm barcode roll above:
+     `.invoice-receipt` opts into it, everything else keeps the default page.
+     Continuous length — the roll feeds as far as the receipt runs. */
+  @page receipt {
+    size: 80mm auto;
+    margin: 0;
+  }
+
+  .invoice-receipt {
+    page: receipt;
+    width: 80mm;
+    color: #000;
+    background: #fff;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+    background: #fff;
+  }
+
+  .barcode-sheet {
+    page: barcode-roll;
+    display: grid;
+    grid-template-columns: repeat(3, 34mm);
+    gap: 0;
+    width: 102mm;
+    margin: 0;
+  }
+
+  /* One die-cut cell. Fixed box with hidden overflow so a long product name can
+     never push the barcode off its label. */
+  .barcode-label {
+    box-sizing: border-box;
+    display: flex;
+    width: 34mm;
+    height: 20mm;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    /* Only 0.5mm of side padding: the symbol needs every millimetre it can get,
+       and it carries its own 10-module quiet zone inside the SVG anyway. */
+    padding: 0.6mm 0.5mm;
+    background: #fff;
+    color: #000;
+    text-align: center;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .barcode-label > * {
+    max-width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .barcode-label-title {
+    font-size: 6pt;
+    font-weight: 700;
+    line-height: 1.15;
+  }
+
+  .barcode-label-variant {
+    font-size: 5pt;
+    line-height: 1.15;
+  }
+
+  /* Height only. The WIDTH is set inline by the Barcode component from its
+     `moduleMm` prop, so one module is an exact physical size rather than
+     whatever is left after stretching to the label. Forcing a width here would
+     reintroduce the fractional module width that stops it scanning. */
+  .barcode-label-code svg {
+    display: block;
+    height: 9mm;
+  }
+
+  .barcode-label-value {
+    font-family: var(--font-jetbrains), ui-monospace, monospace;
+    font-size: 4.5pt;
+    line-height: 1.2;
+    letter-spacing: 0.02em;
+  }
+
+  .barcode-label-price {
+    font-size: 6.5pt;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  /* ===== Membership signup QR card =====
+     The counter poster printed from the Customers page. A5 rather than the
+     102 mm label roll the default @page targets, so it needs its own named
+     page like the receipt does. Every rule is scoped with `:has()` to the
+     moment the card is actually on screen, so nothing here can affect the
+     barcode sheet or an invoice.
+
+     The card lives inside a modal, so the rest of the dashboard is hidden by
+     visibility (not `display: none`) — the card is a descendant of the hidden
+     tree and only re-shows itself, which `display` cannot express. */
+  @page membership-card {
+    size: A5;
+    margin: 14mm;
+  }
+
+  body:has(.membership-print-card) {
+    page: membership-card;
+  }
+
+  body:has(.membership-print-card) * {
+    visibility: hidden;
+  }
+
+  body:has(.membership-print-card) .membership-print-card,
+  body:has(.membership-print-card) .membership-print-card * {
+    visibility: visible;
+  }
+
+  /* Lifted out of the modal's clipped, max-height body so the whole card
+     lands on the sheet. */
+  body:has(.membership-print-card) .membership-print-card {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    border: 0;
+    background: #fff;
+    color: #000;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

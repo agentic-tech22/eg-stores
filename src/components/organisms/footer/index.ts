@@ -1,0 +1,1 @@
+export { FooterAesthetic } from "./FooterAesthetic";

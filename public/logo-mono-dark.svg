@@ -1,0 +1,10 @@
+<svg width="420" height="120" viewBox="0 0 420 120" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="EG Stores — Point of Sale">
+  <!-- Solid dark badge, monogram knocked out -->
+  <rect x="18" y="20" width="80" height="80" rx="22" fill="#12141b"/>
+  <text x="58" y="73" text-anchor="middle"
+        font-family="'Outfit','Segoe UI',Roboto,system-ui,-apple-system,sans-serif"
+        font-size="34" font-weight="800" letter-spacing="-1.6" fill="#ffffff">EG</text>
+
+  <text x="122" y="58" font-family="'Outfit','Segoe UI',Roboto,system-ui,sans-serif" font-size="40" font-weight="700" letter-spacing="-1" fill="#12141b">EG Stores</text>
+  <text x="124" y="86" font-family="'Outfit','Segoe UI',Roboto,system-ui,sans-serif" font-size="15" font-weight="600" letter-spacing="5.5" fill="#12141b" fill-opacity="0.6">POINT OF SALE</text>
+</svg>
