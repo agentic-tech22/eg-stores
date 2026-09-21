@@ -55,6 +55,7 @@ function sale(overrides: Partial<Sale> = {}): Sale {
     customerPhone: "9800000000",
     customerId: null,
     paymentMethod: "cash",
+    channel: "shop",
     paymentStatus: "paid",
     fonepayPrn: null,
     fonepayTraceId: null,

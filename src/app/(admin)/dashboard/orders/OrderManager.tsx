@@ -337,6 +337,7 @@ export function OrderManager({
                     <p className="truncate text-[11px] text-admin-text-muted">
                       {order.customerPhone}
                       {order.source === "storefront" && " · storefront"}
+                      {order.channel === "shop" && " · shop"}
                     </p>
                   </div>
                   <div className="col-span-2 text-sm font-bold text-admin-text">

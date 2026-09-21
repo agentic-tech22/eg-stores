@@ -9,6 +9,11 @@
  */
 
 import { createAdminClient } from "@/lib/supabase/server";
+import {
+  convertOrderToSaleCore,
+  SYSTEM_ACTOR,
+  type ConvertActor,
+} from "@/services/order-to-sale";
 import type {
   Order,
   OrderItem,
@@ -46,12 +51,15 @@ export function mapOrderRow(row: OrderRow): Order {
     customerAddress: row.customer_address,
     status: row.status,
     source: row.source,
+    // `??` guards reads taken before the channel migration has run.
+    channel: row.channel ?? "online",
     warehouseId: row.warehouse_id,
     paymentMethod: row.payment_method,
     paymentStatus: row.payment_status,
     esewaTransactionCode: row.esewa_transaction_code,
     esewaTransactionUuid: row.esewa_transaction_uuid,
     subtotal: row.subtotal,
+    discountAmount: row.discount_amount ?? 0,
     codCharge: row.cod_charge,
     total: row.total,
     notes: row.notes,
@@ -390,16 +398,21 @@ function itemsFromRow(row: OrderRow): ResolvedLine[] {
 
 /**
  * Move an order to `newStatus`, applying the stock side-effects exactly once:
- *   delivered  → commit (deduct) stock, mark stock_committed
+ *   delivered  → commit (deduct) stock, mark stock_committed, convert to a sale
  *   cancelled  → release reserved stock (only if not yet committed), mark stock_released
  * Other statuses just update the field. Idempotent via the stock flags.
  * Extra column updates (e.g. ncm_status) can be merged via `extra`.
+ *
+ * `actor` attributes the sale produced on delivery. It is optional and defaults
+ * to the system actor so the call sites with no session (NCM webhook, background
+ * sync) need pass nothing.
  */
 export async function applyStatusTransition(
   supabase: SupabaseClient,
   order: OrderRow,
   newStatus: OrderStatus,
   extra: Record<string, unknown> = {},
+  actor: ConvertActor = SYSTEM_ACTOR,
 ): Promise<{ error?: string }> {
   const lines = itemsFromRow(order);
   const updates: Record<string, unknown> = {
@@ -424,7 +437,35 @@ export async function applyStatusTransition(
   }
 
   const { error } = await supabase.from("orders").update(updates).eq("id", order.id);
-  return error ? { error: error.message } : {};
+  if (error) return { error: error.message };
+
+  // Delivery is the point revenue is recognised, so the order becomes a sale
+  // here rather than waiting for someone to press a button. Best-effort by
+  // design: the status is already written and the stock already committed, and
+  // failing the delivery over a conversion problem would be far worse than a
+  // missing sale. The detail page's "Convert to sale" button is the retry.
+  //
+  // Re-applying a delivery is safe: the core returns `alreadyConverted`, and
+  // sales.order_id is UNIQUE as the final guard.
+  if (newStatus === "delivered") {
+    try {
+      const converted = await convertOrderToSaleCore(
+        supabase,
+        { ...order, ...updates } as OrderRow,
+        actor,
+      );
+      if (!converted.success && !converted.alreadyConverted) {
+        console.error(
+          `Auto-convert to sale failed for order ${order.id}:`,
+          converted.error,
+        );
+      }
+    } catch (err) {
+      console.error(`Auto-convert to sale threw for order ${order.id}:`, err);
+    }
+  }
+
+  return {};
 }
 
 /** Manual restock of a delivered+returned order (no auto-restock on return). */

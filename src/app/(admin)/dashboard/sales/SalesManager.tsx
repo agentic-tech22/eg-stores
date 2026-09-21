@@ -23,6 +23,7 @@ import { PermissionGate } from "@/components/auth/permission-context";
 import type { Product, ProductVariant } from "@/types/product.types";
 import {
   PAYMENT_METHODS,
+  SALE_CHANNELS,
   saleAmountDue,
   saleExtrasRevenue,
   saleItemsLabel,
@@ -30,6 +31,7 @@ import {
   saleRevenue,
   type PaymentMethod,
   type Sale,
+  type SaleChannel,
 } from "@/types/sale.types";
 import { formatCurrency } from "@/utils/format-currency";
 import type {
@@ -37,7 +39,11 @@ import type {
   WarehouseAvailability,
 } from "@/types/warehouse.types";
 import { SaleFormModal } from "./SaleFormModal";
-import { PaymentBadge, PaymentStatusBadge } from "./payment-badge";
+import {
+  PaymentBadge,
+  PaymentStatusBadge,
+  SaleChannelBadge,
+} from "./payment-badge";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -66,6 +72,7 @@ export function SalesManager({
 
   const [filterText, setFilterText] = useState("");
   const [paymentFilter, setPaymentFilter] = useState<PaymentMethod | "">("");
+  const [channelFilter, setChannelFilter] = useState<SaleChannel | "">("");
   const [staffFilter, setStaffFilter] = useState<string>("");
   const [currentPage, setCurrentPage] = useState(1);
   const [createOpen, setCreateOpen] = useState(false);
@@ -85,6 +92,10 @@ export function SalesManager({
 
     if (paymentFilter) {
       rows = rows.filter((s) => s.paymentMethod === paymentFilter);
+    }
+
+    if (channelFilter) {
+      rows = rows.filter((s) => s.channel === channelFilter);
     }
 
     if (staffFilter) {
@@ -111,7 +122,7 @@ export function SalesManager({
     }
 
     return rows;
-  }, [sales, paymentFilter, staffFilter, filterText]);
+  }, [sales, paymentFilter, channelFilter, staffFilter, filterText]);
 
   // Stats reflect the current filter so the figures match what's on screen.
   // Revenue and profit are the PRODUCT side only: extra (non-catalog) lines are
@@ -177,7 +188,7 @@ export function SalesManager({
       </div>
 
       {/* Filter toolbar */}
-      <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-4">
+      <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-5">
         <div className="flex items-center gap-2 rounded-2xl border border-admin-border bg-admin-surface px-4 sm:col-span-2">
           <Search className="h-4 w-4 shrink-0 text-admin-text-muted" />
           <input
@@ -205,6 +216,22 @@ export function SalesManager({
           {PAYMENT_METHODS.map((m) => (
             <option key={m.value} value={m.value}>
               {m.label}
+            </option>
+          ))}
+        </Select>
+
+        <Select
+          value={channelFilter}
+          aria-label="Filter by sales channel"
+          onChange={(e) => {
+            setChannelFilter(e.target.value as SaleChannel | "");
+            resetPage();
+          }}
+        >
+          <option value="">All channels</option>
+          {SALE_CHANNELS.map((c) => (
+            <option key={c.value} value={c.value}>
+              {c.label}
             </option>
           ))}
         </Select>
@@ -251,7 +278,7 @@ export function SalesManager({
             <p className="col-span-1 text-[10px] font-bold uppercase tracking-[0.15em] text-admin-text-muted">#</p>
             <p className="col-span-2 text-[10px] font-bold uppercase tracking-[0.15em] text-admin-text-muted">Date</p>
             <p className="col-span-3 text-[10px] font-bold uppercase tracking-[0.15em] text-admin-text-muted">Items</p>
-            <p className="col-span-2 text-[10px] font-bold uppercase tracking-[0.15em] text-admin-text-muted">Payment</p>
+            <p className="col-span-2 text-[10px] font-bold uppercase tracking-[0.15em] text-admin-text-muted">Payment / Channel</p>
             <p className="col-span-2 text-[10px] font-bold uppercase tracking-[0.15em] text-admin-text-muted">Total</p>
             <p className="col-span-1 text-right text-[10px] font-bold uppercase tracking-[0.15em] text-admin-text-muted">View</p>
           </div>
@@ -297,6 +324,7 @@ export function SalesManager({
                     )}
                   </div>
                   <div className="col-span-2 flex flex-wrap items-center gap-1.5">
+                    <SaleChannelBadge channel={sale.channel} />
                     <PaymentBadge method={sale.paymentMethod} />
                     <PaymentStatusBadge status={sale.paymentStatus} />
                   </div>

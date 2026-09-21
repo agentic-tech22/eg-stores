@@ -1,10 +1,12 @@
 import { describe, it, expect } from "vitest";
 import {
+  SALE_CHANNELS,
   saleAmountSplit,
   saleExtrasRevenue,
   saleItemsLabel,
   saleProfit,
   saleQuantity,
+  saleChannelLabel,
   saleRevenue,
   type ExtraSaleItem,
   type Sale,
@@ -149,5 +151,23 @@ describe("saleItemsLabel", () => {
 
   it("still reads N/A when a sale has neither kind of line", () => {
     expect(saleItemsLabel(mixedSale([], []))).toBe("N/A");
+  });
+});
+
+describe("saleChannelLabel", () => {
+  it("labels every selectable channel", () => {
+    expect(saleChannelLabel("shop")).toBe("Shop");
+    expect(saleChannelLabel("online")).toBe("Online");
+  });
+
+  it("covers every value in SALE_CHANNELS", () => {
+    for (const c of SALE_CHANNELS) {
+      expect(saleChannelLabel(c.value)).toBe(c.label);
+    }
+  });
+
+  it("falls back to the raw value for anything unrecognized", () => {
+    // Rows written before a future channel is removed still have to render.
+    expect(saleChannelLabel("marketplace" as never)).toBe("marketplace");
   });
 });

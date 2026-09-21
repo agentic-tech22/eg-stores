@@ -38,9 +38,11 @@ import {
 import type { Product, ProductVariant } from "@/types/product.types";
 import {
   PAYMENT_METHODS,
+  SALE_CHANNELS,
   type CustomSaleLine,
   type PaymentMethod,
   type Sale,
+  type SaleChannel,
   type SaleLineInput,
 } from "@/types/sale.types";
 import { formatCurrency } from "@/utils/format-currency";
@@ -194,6 +196,9 @@ export function SaleForm({
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(
     sale?.paymentMethod ?? "cash",
   );
+  // Counter sales are the norm here, so 'shop' is the default. An edit opens on
+  // whatever the sale already recorded.
+  const [channel, setChannel] = useState<SaleChannel>(sale?.channel ?? "shop");
   const [saleDate, setSaleDate] = useState(
     sale?.saleDate.slice(0, 10) ?? toLocalDateStr(new Date()),
   );
@@ -692,6 +697,7 @@ export function SaleForm({
       customerName: customerName.trim() || null,
       customerPhone: customerPhone.trim() || null,
       paymentMethod,
+      channel,
       warehouseId,
       saleDate,
       discountAmount: discountValue,
@@ -1139,6 +1145,21 @@ export function SaleForm({
                 <option key={w.id} value={w.id}>
                   {w.name}
                   {w.isDefault ? " (default)" : ""}
+                </option>
+              ))}
+            </Select>
+          )}
+        </Field>
+        <Field label="Sales channel" required>
+          {(p) => (
+            <Select
+              value={channel}
+              onChange={(e) => setChannel(e.target.value as SaleChannel)}
+              {...p}
+            >
+              {SALE_CHANNELS.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
                 </option>
               ))}
             </Select>

@@ -25,6 +25,26 @@ export function paymentMethodLabel(method: PaymentMethod): string {
 }
 
 /**
+ * How a sale was made: `shop` at the counter, `online` for storefront orders and
+ * anything sold remotely (social, phone) and fulfilled by hand. Orders carry the
+ * same union, and a converted sale inherits its order's channel.
+ *
+ * Distinct from `OrderSource` ('admin'|'storefront'), which records who keyed an
+ * order in rather than how it was sold. The two are not interchangeable.
+ */
+export type SaleChannel = "shop" | "online";
+
+/** Selectable sales channels, in display order. */
+export const SALE_CHANNELS: { value: SaleChannel; label: string }[] = [
+  { value: "shop", label: "Shop" },
+  { value: "online", label: "Online" },
+];
+
+export function saleChannelLabel(channel: SaleChannel): string {
+  return SALE_CHANNELS.find((c) => c.value === channel)?.label ?? channel;
+}
+
+/**
  * Payment settlement state, derived from the sale's payment ledger: `pending`
  * when nothing has been collected, `partial` while some of the total is still
  * due, `paid` once the ledger covers it. `failed` is Fonepay-only, set when a
@@ -138,6 +158,8 @@ export interface Sale {
   /** Linked customer-directory record (set when recorded with a phone). */
   customerId: string | null;
   paymentMethod: PaymentMethod;
+  /** How the sale was made. Converted sales inherit their order's channel. */
+  channel: SaleChannel;
   /** Settlement state. 'paid' for everything except in-flight Fonepay QR sales. */
   paymentStatus: PaymentStatus;
   /** Fonepay payment reference number, set only for Fonepay sales. */
@@ -175,6 +197,7 @@ export interface SaleRow {
   customer_phone: string | null;
   customer_id: string | null;
   payment_method: PaymentMethod;
+  channel: SaleChannel;
   payment_status: PaymentStatus;
   fonepay_prn: string | null;
   fonepay_trace_id: string | null;
@@ -352,6 +375,12 @@ export interface CreateSaleInput {
   customerName?: string | null;
   customerPhone?: string | null;
   paymentMethod: PaymentMethod;
+  /**
+   * How the sale was made. Optional so a stale client bundle mid-deploy still
+   * records a sale rather than being rejected; the server falls back to 'shop'.
+   * An explicitly invalid value is still an error.
+   */
+  channel?: SaleChannel;
   /** Warehouse to deduct stock from. Defaults to the default warehouse if omitted. */
   warehouseId: string;
   saleDate: string;

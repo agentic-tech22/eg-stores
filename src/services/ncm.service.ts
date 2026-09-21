@@ -198,8 +198,12 @@ export async function shipToNcm(
         ncm_delivery_type: opts.deliveryType,
         ncm_shipped_at: new Date().toISOString(),
         ncm_synced_at: new Date().toISOString(),
+        // What the courier will collect from the customer. The order's own
+        // `total` is deliberately NOT recomputed here: shipping records how the
+        // money will be collected, it does not change what is owed. (It used to
+        // set `subtotal + codCharge`, which double-counted the order and wiped
+        // out any discount.)
         cod_charge: opts.codCharge,
-        total: order.subtotal + opts.codCharge,
         status: "shipped",
         updated_at: new Date().toISOString(),
       })
@@ -282,7 +286,7 @@ export async function syncNcmStatus(
   orderId: string,
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    await requirePermission("shipments.ship");
+    const ctx = await requirePermission("shipments.ship");
     const supabase = createAdminClient();
 
     const order = await getOrderById(orderId);
@@ -296,7 +300,12 @@ export async function syncNcmStatus(
     const latest = events[events.length - 1];
     if (!latest) return { success: true }; // nothing new
 
-    const result = await applyNcmStatus(supabase, order, latest.status);
+    // A synced "delivered" converts the order to a sale; credit the staff
+    // member who ran the sync rather than the system.
+    const result = await applyNcmStatus(supabase, order, latest.status, {
+      userId: ctx.userId,
+      email: ctx.email,
+    });
     return result.error
       ? { success: false, error: result.error }
       : { success: true };
@@ -353,7 +362,7 @@ export async function returnNcmOrder(
   comment?: string,
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    await requirePermission("shipments.manage");
+    const ctx = await requirePermission("shipments.manage");
     const supabase = createAdminClient();
 
     const order = await getOrderById(orderId);
@@ -363,7 +372,10 @@ export async function returnNcmOrder(
 
     const config = await loadNcmConfig();
     await markNcmReturn(config, order.ncm_order_id, comment);
-    const result = await applyNcmStatus(supabase, order, "Returned");
+    const result = await applyNcmStatus(supabase, order, "Returned", {
+      userId: ctx.userId,
+      email: ctx.email,
+    });
     return result.error
       ? { success: false, error: result.error }
       : { success: true };

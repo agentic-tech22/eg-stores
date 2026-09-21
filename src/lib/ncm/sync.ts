@@ -6,6 +6,7 @@
 
 import { createAdminClient } from "@/lib/supabase/server";
 import { applyStatusTransition } from "@/services/order-engine";
+import { SYSTEM_ACTOR, type ConvertActor } from "@/services/order-to-sale";
 import { getNcmPhase } from "@/lib/ncm/statusMapping";
 import type { OrderRow } from "@/types/order.types";
 
@@ -15,6 +16,9 @@ export async function applyNcmStatus(
   supabase: SupabaseClient,
   order: OrderRow,
   ncmStatus: string,
+  // Attributes the sale produced when a status means "delivered". Defaults to
+  // the system actor for the webhook, which runs with no session.
+  actor: ConvertActor = SYSTEM_ACTOR,
 ): Promise<{ error?: string }> {
   const extra = {
     ncm_status: ncmStatus,
@@ -23,10 +27,10 @@ export async function applyNcmStatus(
   const phase = getNcmPhase(ncmStatus);
 
   if (phase === "delivered") {
-    return applyStatusTransition(supabase, order, "delivered", extra);
+    return applyStatusTransition(supabase, order, "delivered", extra, actor);
   }
   if (phase === "returned" || phase === "failed") {
-    return applyStatusTransition(supabase, order, "cancelled", extra);
+    return applyStatusTransition(supabase, order, "cancelled", extra, actor);
   }
 
   // Non-terminal update: record the NCM status without changing order.status.

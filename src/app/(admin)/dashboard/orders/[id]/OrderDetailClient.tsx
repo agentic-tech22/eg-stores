@@ -1,17 +1,23 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Ban, Receipt } from "lucide-react";
-import { Select } from "@/components/molecules/form";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, Ban, Receipt, Trash2 } from "lucide-react";
+import { Select, TextInput } from "@/components/molecules/form";
 import { useConfirm } from "@/components/molecules/confirm-dialog/confirm-context";
 import { useOrder } from "@/hooks/orders/use-orders";
 import {
   useCancelOrder,
   useConvertOrderToSale,
+  useDeleteOrder,
+  useUpdateOrderDiscount,
   useUpdateOrderStatus,
 } from "@/hooks/orders/use-order-mutations";
 import { notify } from "@/lib/toast";
+import { clampDiscount } from "@/lib/pos/sale-payment";
 import type { NcmDeliveryType } from "@/types/ncm.types";
+import { orderDeleteBlocker } from "@/types/order.types";
 import type { Order, OrderStatus } from "@/types/order.types";
 import { formatCurrency } from "@/utils/format-currency";
 import { NcmShipmentCard } from "../NcmShipmentCard";
@@ -36,6 +42,7 @@ interface OrderDetailClientProps {
   can: {
     edit: boolean;
     cancel: boolean;
+    delete: boolean;
     ship: boolean;
     manage: boolean;
     convert: boolean;
@@ -49,10 +56,16 @@ export function OrderDetailClient({
   can,
 }: OrderDetailClientProps) {
   const { data: order } = useOrder(initialOrder.id, initialOrder);
+  const router = useRouter();
   const confirm = useConfirm();
   const updateStatus = useUpdateOrderStatus();
   const cancelOrder = useCancelOrder();
   const convertToSale = useConvertOrderToSale();
+  const updateDiscount = useUpdateOrderDiscount();
+  const deleteOrder = useDeleteOrder();
+
+  // Inline discount editing. `null` means the editor is closed.
+  const [discountDraft, setDiscountDraft] = useState<string | null>(null);
 
   const money = (n: number) => formatCurrency(n, currency.code, currency.locale);
 
@@ -78,6 +91,23 @@ export function OrderDetailClient({
     });
   }
 
+  async function handleDelete() {
+    const ok = await confirm({
+      title: "Delete order",
+      description:
+        "Permanently remove this cancelled order and its items. Its stock was already released, so inventory is unaffected. This cannot be undone.",
+      confirmLabel: "Delete order",
+      destructive: true,
+    });
+    if (!ok) return;
+    deleteOrder.mutate(order.id, {
+      onSuccess: () => {
+        notify.success("Order deleted.");
+        router.push("/dashboard/orders");
+      },
+    });
+  }
+
   async function handleConvert() {
     const ok = await confirm({
       title: "Convert to sale",
@@ -93,6 +123,28 @@ export function OrderDetailClient({
 
   const canConvert =
     can.convert && order.status === "delivered" && !order.convertedSale;
+
+  // The same predicate the server enforces, so the button appears only when the
+  // delete would actually succeed.
+  const canDelete = can.delete && orderDeleteBlocker(order) === null;
+
+  // Changing the money after the courier has been told what to collect would
+  // put the two out of step, so editing stops at dispatch.
+  const canEditDiscount =
+    can.edit && (order.status === "pending" || order.status === "processing");
+
+  function saveDiscount() {
+    const amount = clampDiscount(discountDraft, order.subtotal);
+    updateDiscount.mutate(
+      { id: order.id, amount },
+      {
+        onSuccess: () => {
+          notify.success("Discount updated.");
+          setDiscountDraft(null);
+        },
+      },
+    );
+  }
 
   return (
     <div>
@@ -159,6 +211,16 @@ export function OrderDetailClient({
               className="flex items-center gap-2 rounded-xl border border-admin-border px-4 py-2 text-sm font-bold text-admin-danger transition-colors hover:bg-admin-danger/10 disabled:opacity-40"
             >
               <Ban className="h-4 w-4" /> Cancel
+            </button>
+          )}
+          {canDelete && (
+            <button
+              type="button"
+              onClick={() => void handleDelete()}
+              disabled={deleteOrder.isPending}
+              className="flex cursor-pointer items-center gap-2 rounded-xl border border-admin-danger/30 px-4 py-2 text-sm font-bold text-admin-danger transition-colors hover:bg-admin-danger/10 disabled:opacity-40"
+            >
+              <Trash2 className="h-4 w-4" /> Delete
             </button>
           )}
         </div>
@@ -248,13 +310,65 @@ export function OrderDetailClient({
                 <span>Subtotal</span>
                 <span>{money(order.subtotal)}</span>
               </div>
-              <div className="flex justify-between text-admin-text-muted">
-                <span>COD charge</span>
-                <span>{money(order.codCharge)}</span>
+              <div className="flex items-center justify-between gap-3 text-admin-text-muted">
+                <span>Discount</span>
+                {discountDraft === null ? (
+                  <span className="flex items-center gap-2">
+                    <span>
+                      {order.discountAmount > 0
+                        ? `−${money(order.discountAmount)}`
+                        : money(0)}
+                    </span>
+                    {canEditDiscount && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setDiscountDraft(String(order.discountAmount))
+                        }
+                        className="cursor-pointer text-[11px] font-bold text-admin-accent hover:underline"
+                      >
+                        Edit
+                      </button>
+                    )}
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <TextInput
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={discountDraft}
+                      onChange={(e) => setDiscountDraft(e.target.value)}
+                      className="w-24"
+                      aria-label="Discount amount"
+                    />
+                    <button
+                      type="button"
+                      onClick={saveDiscount}
+                      disabled={updateDiscount.isPending}
+                      className="cursor-pointer text-[11px] font-bold text-admin-accent hover:underline disabled:opacity-50"
+                    >
+                      Save
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDiscountDraft(null)}
+                      className="cursor-pointer text-[11px] font-bold text-admin-text-muted hover:underline"
+                    >
+                      Cancel
+                    </button>
+                  </span>
+                )}
               </div>
               <div className="flex justify-between text-base font-extrabold text-admin-text">
                 <span>Total</span>
                 <span>{money(order.total)}</span>
+              </div>
+              {/* What the courier collects on delivery. Recorded for the
+                  shipment; deliberately not part of the total above. */}
+              <div className="flex justify-between pt-1 text-admin-text-muted">
+                <span>COD to collect</span>
+                <span>{money(order.codCharge)}</span>
               </div>
               <div className="flex justify-between pt-1 text-admin-text-muted">
                 <span>Payment</span>

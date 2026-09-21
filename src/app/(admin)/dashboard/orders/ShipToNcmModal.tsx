@@ -184,7 +184,11 @@ export function ShipToNcmModal({
             />
           )}
         </Field>
-        <Field label="COD amount" required>
+        <Field
+          label="COD amount"
+          required
+          hint="What the courier collects from the customer. Defaults to the order total."
+        >
           {(p) => (
             <TextInput
               type="number"

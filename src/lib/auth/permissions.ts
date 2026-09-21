@@ -46,13 +46,20 @@ export const PERMISSIONS = [
   {
     id: "orders.edit",
     label: "Edit orders",
-    description: "Update order status and restock returned orders",
+    description:
+      "Update order status, change an order discount, and restock returned orders",
     group: "Orders",
   },
   {
     id: "orders.cancel",
     label: "Cancel orders",
     description: "Cancel orders and release reserved stock",
+    group: "Orders",
+  },
+  {
+    id: "orders.delete",
+    label: "Delete orders",
+    description: "Permanently remove cancelled orders that hold no stock or revenue",
     group: "Orders",
   },
   {

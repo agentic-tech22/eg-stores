@@ -85,6 +85,8 @@ export function mapSaleRow(row: SaleRow): Sale {
     customerPhone: row.customer_phone,
     customerId: row.customer_id ?? null,
     paymentMethod: row.payment_method,
+    // `??` guards reads taken before the channel migration has run.
+    channel: row.channel ?? "shop",
     paymentStatus: row.payment_status ?? "paid",
     fonepayPrn: row.fonepay_prn ?? null,
     fonepayTraceId: row.fonepay_trace_id ?? null,
@@ -395,7 +397,9 @@ export async function insertSalePayment(
     paymentMethod: PaymentMethod;
     note?: string | null;
   },
-  actor: { userId: string; email: string },
+  // userId is nullable: an auto-converted sale is collected by no one in
+  // particular. `sale_payments.received_by` has no FK and accepts null.
+  actor: { userId: string | null; email: string },
 ): Promise<{ error?: string }> {
   const { error } = await supabase.from("sale_payments").insert({
     sale_id: payment.saleId,

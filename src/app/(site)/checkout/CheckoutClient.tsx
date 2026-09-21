@@ -205,6 +205,12 @@ export function CheckoutClient({ currency }: CheckoutClientProps) {
                 <dt>Subtotal</dt>
                 <dd>{money(summary.subtotal)}</dd>
               </div>
+              {summary.discountAmount > 0 ? (
+                <div className="flex justify-between text-text-secondary">
+                  <dt>Discount</dt>
+                  <dd>−{money(summary.discountAmount)}</dd>
+                </div>
+              ) : null}
               {summary.codCharge > 0 ? (
                 <div className="flex justify-between text-text-secondary">
                   <dt>Delivery (COD)</dt>

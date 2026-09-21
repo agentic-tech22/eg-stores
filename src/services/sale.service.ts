@@ -26,7 +26,9 @@ import {
   reverseSalePoints,
   upsertCustomerByPhone,
 } from "@/services/customer-link";
+import { convertOrderToSaleCore } from "@/services/order-to-sale";
 import {
+  clampDiscount,
   CUSTOMER_REQUIRED_MESSAGE,
   hasCustomerIdentity,
   leavesDue,
@@ -36,11 +38,13 @@ import {
 } from "@/lib/pos/sale-payment";
 import {
   PAYMENT_METHODS,
+  SALE_CHANNELS,
   type CreateSaleInput,
   type PaymentMethod,
   type PaymentStatus,
   type RecordSalePaymentInput,
   type Sale,
+  type SaleChannel,
 } from "@/types/sale.types";
 
 type SupabaseClient = ReturnType<typeof createAdminClient>;
@@ -79,6 +83,19 @@ function normalizePaymentMethod(value: unknown): PaymentMethod | null {
     : null;
 }
 
+/**
+ * Unlike `normalizePaymentMethod`, an absent channel is not an error: it falls
+ * back to 'shop'. A client bundle from before the channel shipped sends no
+ * channel at all, and rejecting those would break the counter mid-deploy. An
+ * explicitly wrong value is still rejected.
+ */
+function normalizeSaleChannel(value: unknown): SaleChannel | null {
+  if (value === undefined || value === null) return "shop";
+  return SALE_CHANNELS.some((c) => c.value === value)
+    ? (value as SaleChannel)
+    : null;
+}
+
 /** Persist the sale header + line items and deduct stock. Lines are assumed
  * already resolved server-side. On any failure after deduction, stock is
  * restored and the partial sale removed. */
@@ -90,6 +107,10 @@ async function persistSale(
   const paymentMethod = normalizePaymentMethod(input.paymentMethod);
   if (!paymentMethod) {
     return { success: false, error: "Choose a valid payment method." };
+  }
+  const channel = normalizeSaleChannel(input.channel);
+  if (!channel) {
+    return { success: false, error: "Choose a valid sales channel." };
   }
   if (!input.saleDate) {
     return { success: false, error: "A sale date is required." };
@@ -116,7 +137,7 @@ async function persistSale(
   // The bill covers both sides: the customer pays one total. Splitting product
   // revenue back out is a reporting concern, handled by `saleAmountSplit`.
   const subtotal = subtotalOf(resolved.items, extras);
-  const discount = Math.min(Math.max(0, input.discountAmount ?? 0), subtotal);
+  const discount = clampDiscount(input.discountAmount, subtotal);
   const total = roundMoney(subtotal - discount);
 
   // Amount collected at the counter. Omitted means the customer paid in full;
@@ -159,6 +180,7 @@ async function persistSale(
       customer_phone: input.customerPhone?.trim() || null,
       customer_id: customerId,
       payment_method: paymentMethod,
+      channel,
       // Set from what was actually collected at the counter: 'paid' in full,
       // 'partial' when some is still due, 'pending' for a pure credit sale.
       // Fonepay always starts 'pending' and flips on its QR callback.
@@ -304,6 +326,10 @@ export async function updateSale(
     if (!paymentMethod) {
       return { success: false, error: "Choose a valid payment method." };
     }
+    const channel = normalizeSaleChannel(input.channel);
+    if (!channel) {
+      return { success: false, error: "Choose a valid sales channel." };
+    }
     const resolved = await resolveLines(supabase, input.items);
     if (resolved.error || !resolved.items || !resolved.extras) {
       return { success: false, error: resolved.error ?? "Invalid items." };
@@ -332,7 +358,7 @@ export async function updateSale(
     }
 
     const subtotal = subtotalOf(resolved.items, extras);
-    const discount = Math.min(Math.max(0, input.discountAmount ?? 0), subtotal);
+    const discount = clampDiscount(input.discountAmount, subtotal);
     const total = roundMoney(subtotal - discount);
 
     // Editing can raise the total past what has already been collected, turning
@@ -373,6 +399,7 @@ export async function updateSale(
         customer_phone: input.customerPhone?.trim() || null,
         customer_id: customerId,
         payment_method: paymentMethod,
+        channel,
         warehouse_id: newWarehouseId,
         subtotal,
         discount_amount: discount,
@@ -473,12 +500,13 @@ export async function updateSale(
 }
 
 /**
- * Convert a DELIVERED order into a sale so its revenue is counted. Delivered
- * orders have already committed (deducted) their stock, so NO stock movement
- * happens here: we just snapshot the order's items into a new sale and link
- * the two. Idempotent: the UNIQUE constraint on sales.order_id (plus the guard
- * below) ensures an order can be converted at most once. COD is excluded, so the
- * sale total is the order subtotal (product revenue only).
+ * Convert a DELIVERED order into a sale so its revenue is counted — the manual
+ * entry point behind the "Convert to sale" button.
+ *
+ * The work itself lives in `convertOrderToSaleCore`, which is also called
+ * automatically the moment an order reaches `delivered`. This wrapper adds the
+ * permission check and the signed-in user's attribution; it doubles as the
+ * retry path when an automatic conversion failed.
  */
 export async function convertOrderToSale(
   orderId: string,
@@ -489,142 +517,16 @@ export async function convertOrderToSale(
 
     const order = await getOrderById(orderId);
     if (!order) return { success: false, error: "Order not found." };
-    if (order.status !== "delivered") {
-      return {
-        success: false,
-        error: "Only delivered orders can be converted to a sale.",
-      };
-    }
 
-    const { data: existing } = await supabase
-      .from("sales")
-      .select("sale_number")
-      .eq("order_id", orderId)
-      .maybeSingle();
-    if (existing) {
-      return {
-        success: false,
-        error: `This order is already converted to sale #${(existing as { sale_number: number }).sale_number}.`,
-      };
-    }
-
-    const lines = order.order_items ?? [];
-    if (lines.length === 0) {
-      return { success: false, error: "This order has no items to convert." };
-    }
-
-    // order_items don't carry cost, so snapshot each product's current cost for
-    // profit. Cost is product-level (variants inherit it); 0 if the product is gone.
-    const productIds = [
-      ...new Set(lines.map((l) => l.product_id).filter(Boolean)),
-    ] as string[];
-    const costByProduct = new Map<string, number>();
-    if (productIds.length > 0) {
-      const { data: products } = await supabase
-        .from("products")
-        .select("id, cost_price")
-        .in("id", productIds);
-      for (const p of (products ?? []) as { id: string; cost_price: number }[]) {
-        costByProduct.set(p.id, p.cost_price ?? 0);
-      }
-    }
-
-    // Revenue date = when the order was delivered (fallback: now). Excludes COD.
-    const subtotal = order.subtotal;
-    const saleDate = (order.ncm_delivered_at ?? order.updated_at ?? new Date().toISOString()).slice(0, 10);
-
-    const { data: saleRow, error: saleError } = await supabase
-      .from("sales")
-      .insert({
-        customer_name: order.customer_name,
-        customer_phone: order.customer_phone,
-        payment_method: "cash",
-        warehouse_id: order.warehouse_id,
-        subtotal,
-        discount_amount: 0,
-        total: subtotal,
-        sale_date: saleDate,
-        notes: `Converted from order #${order.order_number}`,
-        order_id: orderId,
-        created_by: ctx.userId,
-        created_by_email: ctx.email,
-      })
-      .select("id")
-      .single();
-
-    if (saleError || !saleRow) {
-      // A UNIQUE violation here means a concurrent conversion beat us to it.
-      return {
-        success: false,
-        error: saleError?.message ?? "Could not create sale.",
-      };
-    }
-
-    // Combos are stored across a priced header line (product_id null) plus
-    // zero-priced component lines that bear the stock. Collapse them into the
-    // header for the sale: drop the component lines and fold their cost into the
-    // combo header's per-unit cost_at_sale so profit stays correct.
-    const headerQtyByCombo = new Map<string, number>();
-    for (const it of lines) {
-      if (it.combo_id && !it.product_id) headerQtyByCombo.set(it.combo_id, it.quantity);
-    }
-    const comboUnitCost = new Map<string, number>();
-    for (const it of lines) {
-      if (it.combo_id && it.product_id) {
-        const headerQty = headerQtyByCombo.get(it.combo_id) || 1;
-        const perCombo = it.quantity / headerQty;
-        const compCost = costByProduct.get(it.product_id) ?? 0;
-        comboUnitCost.set(
-          it.combo_id,
-          (comboUnitCost.get(it.combo_id) ?? 0) + compCost * perCombo,
-        );
-      }
-    }
-
-    const saleId = (saleRow as { id: string }).id;
-    const { error: itemsError } = await supabase.from("sale_items").insert(
-      lines
-        .filter((it) => !(it.combo_id && it.product_id)) // drop combo components
-        .map((it) => ({
-          sale_id: saleId,
-          product_id: it.product_id,
-          product_variant_id: it.product_variant_id,
-          product_title: it.product_title,
-          variant_label: it.variant_label,
-          sku: it.sku,
-          quantity: it.quantity,
-          unit_price: it.unit_price,
-          cost_at_sale: it.combo_id
-            ? (comboUnitCost.get(it.combo_id) ?? 0)
-            : it.product_id
-              ? (costByProduct.get(it.product_id) ?? 0)
-              : 0,
-          line_total: it.line_total,
-        })),
-    );
-
-    if (itemsError) {
-      await supabase.from("sales").delete().eq("id", saleId);
-      return { success: false, error: itemsError.message };
-    }
-
-    // A delivered order has already been collected on, so the converted sale
-    // opens fully settled. Without a ledger row it would read as entirely due.
-    if (subtotal > 0) {
-      await insertSalePayment(
-        supabase,
-        {
-          saleId,
-          amount: subtotal,
-          paidOn: saleDate,
-          paymentMethod: "cash",
-          note: `Collected on order #${order.order_number}`,
-        },
-        { userId: ctx.userId, email: ctx.email },
-      );
-    }
-
-    return { success: true, saleId };
+    const result = await convertOrderToSaleCore(supabase, order, {
+      userId: ctx.userId,
+      email: ctx.email,
+    });
+    return {
+      success: result.success,
+      error: result.error,
+      saleId: result.saleId,
+    };
   } catch (err) {
     return {
       success: false,

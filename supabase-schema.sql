@@ -499,6 +499,13 @@ CREATE TABLE orders (
   status          TEXT NOT NULL DEFAULT 'pending'
                     CHECK (status IN ('pending','processing','shipped','delivered','cancelled')),
   source          TEXT NOT NULL DEFAULT 'admin' CHECK (source IN ('admin','storefront')),
+  -- How the customer bought. Storefront orders are always 'online'; an
+  -- admin-keyed order may be 'shop' when a walk-in ordered something out of
+  -- stock for later delivery. Carried onto the sale at conversion.
+  --
+  -- Distinct from `source` above: that records WHO keyed the order in, this
+  -- records HOW the customer bought. They are not interchangeable.
+  channel         TEXT NOT NULL DEFAULT 'online' CHECK (channel IN ('shop','online')),
   -- Warehouse this order draws stock from (reserve/commit/release all target it).
   -- Admin orders pick it; storefront orders use the default warehouse. RESTRICT so
   -- a warehouse referenced by order history cannot be hard-deleted.
@@ -510,7 +517,13 @@ CREATE TABLE orders (
   esewa_transaction_code TEXT,   -- eSewa's reference code from the success response
   esewa_transaction_uuid TEXT,   -- our transaction_uuid sent to eSewa at initiation
   subtotal        NUMERIC(10,2) NOT NULL DEFAULT 0,
+  -- Order-level discount, in currency. Clamped to [0, subtotal] in app code.
+  discount_amount NUMERIC(10,2) NOT NULL DEFAULT 0,
+  -- What the courier collects from the customer on delivery. NOT part of the
+  -- order total: it is recorded for the shipment only, and is excluded from the
+  -- sale at conversion because it is a courier fee, not revenue.
   cod_charge      NUMERIC(10,2) NOT NULL DEFAULT 0,
+  -- total = subtotal - discount_amount. cod_charge is deliberately not added.
   total           NUMERIC(10,2) NOT NULL DEFAULT 0,
   notes           TEXT,
   -- NCM courier shipment fields
@@ -563,6 +576,13 @@ CREATE TABLE sales (
   customer_id     UUID REFERENCES customers(id) ON DELETE SET NULL,
   payment_method  TEXT NOT NULL DEFAULT 'cash'
                     CHECK (payment_method IN ('cash','esewa','khalti','ime_pay','bank','credit','fonepay')),
+  -- How the sale was made: 'shop' is a counter/walk-in sale, 'online' covers
+  -- storefront orders and anything sold remotely (social, phone) and fulfilled
+  -- by hand. A sale converted from an order inherits that order's channel.
+  --
+  -- Deliberately NOT named `source`: orders.source ('admin'|'storefront')
+  -- records who keyed an order in, a different question entirely.
+  channel         TEXT NOT NULL DEFAULT 'shop' CHECK (channel IN ('shop','online')),
   -- Payment settlement state, derived from the sale_payments ledger whenever a
   -- payment is recorded or the total changes: 'pending' when nothing has been
   -- collected, 'partial' when some of the total is still due, 'paid' once the
@@ -1199,6 +1219,7 @@ CREATE UNIQUE INDEX idx_variants_barcode ON product_variants(barcode) WHERE barc
 CREATE INDEX idx_orders_status ON orders(status);
 CREATE INDEX idx_orders_created ON orders(created_at DESC);
 CREATE INDEX idx_orders_ncm ON orders(ncm_order_id);
+CREATE INDEX idx_orders_channel ON orders(channel);
 CREATE INDEX idx_orders_esewa_uuid ON orders(esewa_transaction_uuid) WHERE esewa_transaction_uuid IS NOT NULL;
 CREATE INDEX idx_order_items_order ON order_items(order_id);
 
@@ -1250,6 +1271,7 @@ CREATE INDEX idx_stock_movements_created ON stock_movements(created_at DESC);
 
 -- Sales & line items
 CREATE INDEX idx_sales_date ON sales(sale_date DESC);
+CREATE INDEX idx_sales_channel ON sales(channel);
 CREATE INDEX idx_sales_created ON sales(created_at DESC);
 CREATE INDEX idx_sales_created_by ON sales(created_by);
 -- Fonepay status polling looks the sale up by its payment reference number.

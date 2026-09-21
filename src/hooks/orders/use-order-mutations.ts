@@ -7,7 +7,9 @@ import { unwrap } from "@/lib/react-query/unwrap";
 import {
   cancelOrder,
   createOrder,
+  deleteOrder,
   restockOrder,
+  updateOrderDiscount,
   updateOrderStatus,
 } from "@/services/order.service";
 import { convertOrderToSale } from "@/services/sale.service";
@@ -41,10 +43,35 @@ export function useUpdateOrderStatus() {
   });
 }
 
+/**
+ * Change an order's discount after creation. Only permitted before the order
+ * ships; the server rejects anything later.
+ */
+export function useUpdateOrderDiscount() {
+  const handlers = useOrderInvalidation();
+  return useMutation({
+    mutationFn: async ({ id, amount }: { id: string; amount: number }) =>
+      unwrap(await updateOrderDiscount(id, amount)),
+    ...handlers,
+  });
+}
+
 export function useCancelOrder() {
   const handlers = useOrderInvalidation();
   return useMutation({
     mutationFn: async (id: string) => unwrap(await cancelOrder(id)),
+    ...handlers,
+  });
+}
+
+/**
+ * Permanently remove a cancelled order. The server refuses anything that still
+ * holds stock or has a sale attached.
+ */
+export function useDeleteOrder() {
+  const handlers = useOrderInvalidation();
+  return useMutation({
+    mutationFn: async (id: string) => unwrap(await deleteOrder(id)),
     ...handlers,
   });
 }

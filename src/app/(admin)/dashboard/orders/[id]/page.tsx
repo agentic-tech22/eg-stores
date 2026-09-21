@@ -36,6 +36,7 @@ export default async function OrderDetailPage({ params }: PageProps) {
       can={{
         edit: ctxHasPermission(ctx, "orders.edit"),
         cancel: ctxHasPermission(ctx, "orders.cancel"),
+        delete: ctxHasPermission(ctx, "orders.delete"),
         ship: ctxHasPermission(ctx, "shipments.ship"),
         manage: ctxHasPermission(ctx, "shipments.manage"),
         convert: ctxHasPermission(ctx, "sales.create"),

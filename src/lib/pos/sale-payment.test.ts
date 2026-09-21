@@ -7,6 +7,7 @@ import {
   roundMoney,
   sumPayments,
   validatePayment,
+  clampDiscount,
 } from "./sale-payment";
 
 describe("sumPayments", () => {
@@ -129,5 +130,44 @@ describe("validatePayment", () => {
     );
     expect(value).toBeNull();
     expect(errors.paidOn).toBeTruthy();
+  });
+});
+
+describe("clampDiscount", () => {
+  it("passes a normal discount through", () => {
+    expect(clampDiscount(150, 1000)).toBe(150);
+  });
+
+  it("caps a discount at the subtotal so the total never goes negative", () => {
+    expect(clampDiscount(5000, 1000)).toBe(1000);
+  });
+
+  it("allows a discount exactly equal to the subtotal (a free item)", () => {
+    expect(clampDiscount(1000, 1000)).toBe(1000);
+  });
+
+  it("treats a negative discount as none rather than inflating the total", () => {
+    expect(clampDiscount(-250, 1000)).toBe(0);
+  });
+
+  it("reads blanks and junk from a form field as no discount", () => {
+    expect(clampDiscount("", 1000)).toBe(0);
+    expect(clampDiscount("abc", 1000)).toBe(0);
+    expect(clampDiscount(null, 1000)).toBe(0);
+    expect(clampDiscount(undefined, 1000)).toBe(0);
+    expect(clampDiscount(NaN, 1000)).toBe(0);
+  });
+
+  it("parses a numeric string, as a form submits it", () => {
+    expect(clampDiscount("99.5", 1000)).toBe(99.5);
+  });
+
+  it("rounds to the 2 decimals the money columns store", () => {
+    expect(clampDiscount(10.005, 1000)).toBe(10.01);
+    expect(clampDiscount(33.333333, 1000)).toBe(33.33);
+  });
+
+  it("yields nothing when there is no subtotal to discount", () => {
+    expect(clampDiscount(50, 0)).toBe(0);
   });
 });

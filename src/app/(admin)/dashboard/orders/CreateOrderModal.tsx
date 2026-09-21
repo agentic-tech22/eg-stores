@@ -6,8 +6,10 @@ import { Modal } from "@/components/molecules/modal/Modal";
 import { Field, Select, TextInput, Textarea } from "@/components/molecules/form";
 import { useCreateOrder } from "@/hooks/orders/use-order-mutations";
 import { notify } from "@/lib/toast";
+import { clampDiscount, roundMoney } from "@/lib/pos/sale-payment";
 import type { Product, ProductVariant } from "@/types/product.types";
 import type { OrderLineInput } from "@/types/order.types";
+import { SALE_CHANNELS, type SaleChannel } from "@/types/sale.types";
 import type {
   Warehouse,
   WarehouseAvailability,
@@ -66,6 +68,10 @@ export function CreateOrderModal({
   const [customerAddress, setCustomerAddress] = useState("");
   const [warehouseId, setWarehouseId] = useState(defaultWarehouseId);
   const [notes, setNotes] = useState("");
+  // Most orders are placed remotely; a walk-in who orders something out of
+  // stock for later delivery is the exception, so 'online' is the default.
+  const [channel, setChannel] = useState<SaleChannel>("online");
+  const [discount, setDiscount] = useState("");
   const [lines, setLines] = useState<DraftLine[]>([newLine()]);
 
   const productById = useMemo(
@@ -108,6 +114,11 @@ export function CreateOrderModal({
     const qty = parseInt(line.quantity, 10);
     return price && qty > 0 ? sum + price * qty : sum;
   }, 0);
+
+  // The same clamp the server applies, so the preview can't disagree with what
+  // gets stored (notably the rounding to 2 decimals).
+  const discountValue = clampDiscount(discount, subtotal);
+  const total = roundMoney(subtotal - discountValue);
 
   function handleSubmit() {
     if (!customerName.trim() || !customerPhone.trim() || !customerAddress.trim()) {
@@ -165,6 +176,8 @@ export function CreateOrderModal({
         customerAddress,
         warehouseId,
         notes: notes || null,
+        channel,
+        discountAmount: discountValue,
         items,
       },
       {
@@ -267,6 +280,26 @@ export function CreateOrderModal({
                 <option key={w.id} value={w.id}>
                   {w.name}
                   {w.isDefault ? " (default)" : ""}
+                </option>
+              ))}
+            </Select>
+          )}
+        </Field>
+        <Field
+          label="Sales channel"
+          required
+          className="sm:col-span-2"
+          hint="Carried onto the sale when this order is delivered."
+        >
+          {(p) => (
+            <Select
+              value={channel}
+              onChange={(e) => setChannel(e.target.value as SaleChannel)}
+              {...p}
+            >
+              {SALE_CHANNELS.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
                 </option>
               ))}
             </Select>
@@ -401,7 +434,7 @@ export function CreateOrderModal({
           })}
         </div>
 
-        <div className="mt-4 flex items-center justify-between border-t border-admin-border pt-4">
+        <div className="mt-4 flex items-end justify-between border-t border-admin-border pt-4">
           <Field label="Notes" className="flex-1">
             {(p) => (
               <TextInput
@@ -412,12 +445,36 @@ export function CreateOrderModal({
               />
             )}
           </Field>
-          <div className="ml-4 text-right">
+          <Field label="Discount" className="ml-4 w-32">
+            {(p) => (
+              <TextInput
+                type="number"
+                min="0"
+                step="0.01"
+                value={discount}
+                onChange={(e) => setDiscount(e.target.value)}
+                placeholder="0"
+                {...p}
+              />
+            )}
+          </Field>
+          <div className="ml-4 space-y-0.5 text-right">
             <p className="text-[11px] uppercase tracking-wide text-admin-text-muted">
-              Subtotal
+              Subtotal{" "}
+              <span className="font-semibold text-admin-text">
+                {formatCurrency(subtotal, currency.code, currency.locale)}
+              </span>
             </p>
+            {discountValue > 0 && (
+              <p className="text-[11px] uppercase tracking-wide text-admin-text-muted">
+                Discount{" "}
+                <span className="font-semibold text-admin-text">
+                  −{formatCurrency(discountValue, currency.code, currency.locale)}
+                </span>
+              </p>
+            )}
             <p className="text-lg font-extrabold text-admin-text">
-              {formatCurrency(subtotal, currency.code, currency.locale)}
+              {formatCurrency(total, currency.code, currency.locale)}
             </p>
           </div>
         </div>

@@ -1,8 +1,10 @@
 import {
   PAYMENT_STATUS_LABELS,
   paymentMethodLabel,
+  saleChannelLabel,
   type PaymentMethod,
   type PaymentStatus,
+  type SaleChannel,
 } from "@/types/sale.types";
 import { cn } from "@/utils/cn";
 
@@ -53,6 +55,29 @@ export function PaymentStatusBadge({ status }: { status: PaymentStatus }) {
       )}
     >
       {PAYMENT_STATUS_LABELS[status]}
+    </span>
+  );
+}
+
+// Online is accented so it stands out from the counter default at a glance.
+const channelTone: Record<SaleChannel, string> = {
+  shop: "bg-admin-card text-admin-text-muted",
+  online: "bg-admin-accent/12 text-admin-accent",
+};
+
+/**
+ * How the sale was made. Unlike `PaymentStatusBadge` this renders for both
+ * values: telling shop and online apart is the whole point of the field.
+ */
+export function SaleChannelBadge({ channel }: { channel: SaleChannel }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold",
+        channelTone[channel],
+      )}
+    >
+      {saleChannelLabel(channel)}
     </span>
   );
 }

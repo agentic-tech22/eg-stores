@@ -27,6 +27,21 @@ export function roundMoney(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
+/**
+ * Constrain a discount to what the subtotal can actually bear: never negative,
+ * never more than the subtotal, and rounded to the stored precision. A blank or
+ * non-numeric amount reads as no discount.
+ *
+ * Shared by sales, orders and the order→sale conversion so a discount can never
+ * push a total below zero on any path.
+ */
+export function clampDiscount(amount: unknown, subtotal: number): number {
+  const raw = typeof amount === "number" ? amount : Number(amount);
+  if (!Number.isFinite(raw) || raw <= 0) return 0;
+  const ceiling = Math.max(0, subtotal);
+  return roundMoney(Math.min(raw, ceiling));
+}
+
 /** Parse a form string or raw number, rejecting blanks and non-numeric input. */
 function toNumber(value: unknown): number | null {
   if (typeof value === "number") return Number.isFinite(value) ? value : null;

@@ -28,7 +28,11 @@ import type {
 } from "@/types/warehouse.types";
 import { formatCurrency } from "@/utils/format-currency";
 import { SaleFormModal } from "../SaleFormModal";
-import { PaymentBadge, PaymentStatusBadge } from "../payment-badge";
+import {
+  PaymentBadge,
+  PaymentStatusBadge,
+  SaleChannelBadge,
+} from "../payment-badge";
 import { GenerateInvoiceButton } from "./GenerateInvoiceButton";
 import { RecordPaymentModal } from "./RecordPaymentModal";
 
@@ -131,6 +135,7 @@ export function SaleDetailClient({
             <h1 className="text-2xl font-extrabold tracking-tight text-admin-text">
               Sale #{sale.saleNumber}
             </h1>
+            <SaleChannelBadge channel={sale.channel} />
             <PaymentBadge method={sale.paymentMethod} />
             <PaymentStatusBadge status={sale.paymentStatus} />
           </div>
