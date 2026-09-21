@@ -17,23 +17,45 @@ import { EmptyState, PageHeader } from "@/components/molecules/admin";
 import { Modal } from "@/components/molecules/modal/Modal";
 import { Field, TextInput } from "@/components/molecules/form";
 import { notify } from "@/lib/toast";
+import { formatCurrency } from "@/utils/format-currency";
 import type { Category } from "@/types/product.types";
 
 interface CategoryManagerProps {
   initialCategories: Category[];
   /** Titles of the products assigned to each category, keyed by category id. */
   categoryProducts: Record<string, string[]>;
-  can: { create: boolean; edit: boolean; delete: boolean };
+  /** On-hand units and their value at cost price, keyed by category id. */
+  categoryStock: Record<string, { units: number; costValue: number }>;
+  currency: { code: string; locale: string };
+  can: {
+    create: boolean;
+    edit: boolean;
+    delete: boolean;
+    viewFinances: boolean;
+  };
 }
 
 export function CategoryManager({
   initialCategories,
   categoryProducts,
+  categoryStock,
+  currency,
   can,
 }: CategoryManagerProps) {
   const { data: categories = initialCategories } = useCategories(initialCategories);
   const deleteCategory = useDeleteCategory();
   const confirm = useConfirm();
+
+  const money = (n: number) => formatCurrency(n, currency.code, currency.locale);
+  // The Cost Value column borrows its width from Category and Products, so the
+  // row stays on the same 12-column grid whether or not it is shown.
+  const showCost = can.viewFinances;
+  const nameSpan = showCost ? "col-span-4" : "col-span-6";
+  const countSpan = showCost ? "col-span-2" : "col-span-3";
+  const totalCostValue = categories.reduce(
+    (sum, c) => sum + (categoryStock[c.id]?.costValue ?? 0),
+    0,
+  );
 
   // `formOpen` controls visibility; `editing` null = create mode.
   const [formOpen, setFormOpen] = useState(false);
@@ -121,14 +143,18 @@ export function CategoryManager({
         <div className="overflow-hidden rounded-2xl border border-admin-border bg-admin-surface">
           <div className="hidden border-b border-admin-border bg-admin-card/40 px-5 py-3 sm:grid sm:grid-cols-12 sm:items-center sm:gap-4">
             <p className="col-span-1 text-[10px] font-bold uppercase tracking-[0.15em] text-admin-text-muted">S.N</p>
-            <p className="col-span-6 text-[10px] font-bold uppercase tracking-[0.15em] text-admin-text-muted">Category</p>
-            <p className="col-span-3 text-[10px] font-bold uppercase tracking-[0.15em] text-admin-text-muted">Products</p>
+            <p className={`${nameSpan} text-[10px] font-bold uppercase tracking-[0.15em] text-admin-text-muted`}>Category</p>
+            <p className={`${countSpan} text-[10px] font-bold uppercase tracking-[0.15em] text-admin-text-muted`}>Products</p>
+            {showCost && (
+              <p className="col-span-3 text-[10px] font-bold uppercase tracking-[0.15em] text-admin-text-muted">Cost Value</p>
+            )}
             <p className="col-span-2 text-right text-[10px] font-bold uppercase tracking-[0.15em] text-admin-text-muted">Actions</p>
           </div>
 
           <div className="divide-y divide-admin-border">
             {categories.map((category, i) => {
               const count = (categoryProducts[category.id] ?? []).length;
+              const stock = categoryStock[category.id];
               return (
                 <div
                   key={category.id}
@@ -138,18 +164,29 @@ export function CategoryManager({
                     {i + 1}
                   </div>
 
-                  <div className="col-span-6 flex items-center gap-3">
+                  <div className={`${nameSpan} flex items-center gap-3`}>
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-admin-accent/10 text-admin-accent">
                       <Tag className="h-4 w-4" />
                     </span>
                     <p className="truncate text-sm font-bold text-admin-text">{category.name}</p>
                   </div>
 
-                  <div className="col-span-3">
+                  <div className={countSpan}>
                     <span className="inline-flex rounded-lg bg-admin-card px-2.5 py-1 text-xs font-bold text-admin-text">
                       {count} product{count === 1 ? "" : "s"}
                     </span>
                   </div>
+
+                  {showCost && (
+                    <div className="col-span-3">
+                      <p className="text-sm font-bold text-admin-text">
+                        {money(stock?.costValue ?? 0)}
+                      </p>
+                      <p className="text-[11px] text-admin-text-muted">
+                        {stock?.units ?? 0} unit{(stock?.units ?? 0) === 1 ? "" : "s"} on hand
+                      </p>
+                    </div>
+                  )}
 
                   <div className="col-span-2 flex items-center justify-end gap-1">
                     {!can.edit && !can.delete && (
@@ -181,6 +218,17 @@ export function CategoryManager({
               );
             })}
           </div>
+
+          {showCost && (
+            <div className="border-t border-admin-border bg-admin-card/40 px-5 py-3 sm:grid sm:grid-cols-12 sm:items-center sm:gap-4">
+              <p className="col-span-7 text-[10px] font-bold uppercase tracking-[0.15em] text-admin-text-muted">
+                Total cost value
+              </p>
+              <p className="col-span-3 text-sm font-bold text-admin-text">
+                {money(totalCostValue)}
+              </p>
+            </div>
+          )}
         </div>
       )}
 
