@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Container } from "@/components/atoms/container/Container";
+import { CartButton } from "@/components/molecules/cart-button/CartButton";
 import type { NavbarConfig } from "@/types/layout.types";
 import { cn } from "@/utils/cn";
 import { getNavbarLogoClasses } from "@/utils/logo-classes";
@@ -43,15 +44,19 @@ export function NavbarAesthetic({ config, className }: NavbarAestheticProps) {
             ))}
           </div>
 
-          <div className="hidden lg:block">
+          <div className="hidden items-center gap-2 lg:flex">
+            {config.showCart && <CartButton />}
             <a href={config.ctaHref ?? "#"} className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-secondary to-primary px-6 py-2.5 text-xs font-bold uppercase tracking-widest text-white shadow-lg shadow-secondary/15 transition-all duration-200 hover:shadow-secondary/25 active:scale-95">{config.ctaText}</a>
           </div>
 
-          <button type="button" className="flex h-10 w-10 items-center justify-center rounded-full text-primary transition-colors hover:bg-surface lg:hidden" onClick={() => setMobileOpen(!mobileOpen)} aria-label={mobileOpen ? "Close menu" : "Open menu"} aria-expanded={mobileOpen}>
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              {mobileOpen ? <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /> : <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 7.5h16.5M3.75 12h16.5m-16.5 4.5h16.5" />}
-            </svg>
-          </button>
+          <div className="flex items-center gap-1 lg:hidden">
+            {config.showCart && <CartButton />}
+            <button type="button" className="flex h-10 w-10 items-center justify-center rounded-full text-primary transition-colors hover:bg-surface" onClick={() => setMobileOpen(!mobileOpen)} aria-label={mobileOpen ? "Close menu" : "Open menu"} aria-expanded={mobileOpen}>
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                {mobileOpen ? <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /> : <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 7.5h16.5M3.75 12h16.5m-16.5 4.5h16.5" />}
+              </svg>
+            </button>
+          </div>
         </nav>
 
         <div className={cn("overflow-hidden transition-all duration-300 ease-out lg:hidden", mobileOpen ? "max-h-screen pb-4 pt-3" : "max-h-0")}>

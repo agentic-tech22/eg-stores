@@ -132,6 +132,9 @@
   --color-surface: var(--theme-surface);
   --color-text-primary: var(--theme-text-primary);
   --color-text-secondary: var(--theme-text-secondary);
+  /* --theme-text-muted existed but was never exposed to Tailwind, so every
+     `text-text-muted` in the codebase silently resolved to nothing. */
+  --color-text-muted: var(--theme-text-muted);
   --color-accent: var(--theme-accent);
 
   /* Derived tokens */

@@ -60,6 +60,33 @@ export async function getFeaturedProducts(
   return (data ?? []) as ProductRow[];
 }
 
+/**
+ * Visible storefront products for a set of ids, in whatever order Postgres
+ * returns them — callers that care about order (best sellers, say) re-sort by
+ * their own ranking. Returns [] for an empty id list rather than issuing a
+ * query that would match nothing.
+ */
+export async function getStorefrontProductsByIds(
+  ids: string[],
+): Promise<ProductRow[]> {
+  if (ids.length === 0) return [];
+
+  const supabase = await createServerSupabaseClient();
+
+  const { data, error } = await supabase
+    .from("products")
+    .select("*")
+    .in("id", ids)
+    .eq("is_visible", true);
+
+  if (error) {
+    console.error("Failed to fetch products by id:", error.message);
+    return [];
+  }
+
+  return (data ?? []) as ProductRow[];
+}
+
 /** All non-archived variants for a product, ordered for stable display. */
 export async function getVariantsByProduct(
   productId: string,

@@ -1,25 +1,25 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
-import { FooterAesthetic } from "@/components/organisms/footer";
-import { NavbarAesthetic } from "@/components/organisms/navbar";
+import { SiteShell } from "@/components/organisms/site-shell";
 import { siteConfig } from "@/config/site";
-import { fetchProducts } from "@/services/product.service";
-import { fetchCategories } from "@/services/category.service";
 import { getActiveCurrency } from "@/lib/currency.server";
-import type { FooterConfig, NavbarConfig } from "@/types/layout.types";
+import { fetchCategories } from "@/services/category.service";
+import { fetchProducts } from "@/services/product.service";
+import { toPublicProducts } from "@/utils/to-public-product";
 import { ProductsPageClient } from "./ProductsPageClient";
 
-const navLinks = [
-  { label: "Home", href: "/" },
-  { label: "Products", href: "/products" },
-];
-
 const siteTitle = siteConfig.defaultSiteName;
+const description = "Browse every phone and accessory we have in stock.";
 
 export const metadata: Metadata = {
   title: `Products | ${siteTitle}`,
-  description: "Browse our full collection of products.",
-  openGraph: { title: `Products | ${siteTitle}`, description: "Browse our full collection of products." },
-  twitter: { card: "summary_large_image", title: `Products | ${siteTitle}`, description: "Browse our full collection of products." },
+  description,
+  openGraph: { title: `Products | ${siteTitle}`, description },
+  twitter: {
+    card: "summary_large_image",
+    title: `Products | ${siteTitle}`,
+    description,
+  },
 };
 
 export default async function ProductsPage() {
@@ -29,25 +29,19 @@ export default async function ProductsPage() {
     getActiveCurrency(),
   ]);
 
-  const navbarConfig: NavbarConfig = {
-    siteName: siteTitle,
-    links: navLinks,
-    ctaText: "Shop Now",
-  };
-
-  const footerConfig: FooterConfig = {
-    siteName: siteTitle,
-    description: siteConfig.defaultDescription,
-    links: [{ group: "Navigate", items: navLinks }],
-  };
-
   return (
-    <>
-      <NavbarAesthetic config={navbarConfig} />
-      <main className="flex-1">
-        <ProductsPageClient products={products} categories={categories} currency={currency} />
-      </main>
-      <FooterAesthetic config={footerConfig} />
-    </>
+    <SiteShell>
+      {/* ProductsPageClient reads ?category= via useSearchParams, which needs a
+          Suspense boundary above it. */}
+      <Suspense fallback={null}>
+        {/* Cost stripped: ProductsPageClient is a client component, so its props
+            are serialized into the page payload. */}
+        <ProductsPageClient
+          products={toPublicProducts(products)}
+          categories={categories}
+          currency={currency}
+        />
+      </Suspense>
+    </SiteShell>
   );
 }
