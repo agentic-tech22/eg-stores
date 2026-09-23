@@ -12,9 +12,11 @@ import {
   getFeaturedProducts,
   getProducts,
   getStorefrontProducts,
+  getStorefrontProductsByIds,
   getVariantsByProduct,
   getVariantsForProducts,
 } from "@/queries/product.query";
+import { getBestSellingProductIds } from "@/queries/sale.query";
 import {
   getDefaultWarehouseId,
   getWarehouseStockForProducts,
@@ -422,6 +424,36 @@ export async function fetchFeaturedProducts(
 ): Promise<Product[]> {
   const rows = await getFeaturedProducts(limit);
   return rows.map(mapProductRow);
+}
+
+/**
+ * The shop's best sellers, most units sold first.
+ *
+ * Ungated on purpose, like `fetchProducts` and `fetchMembershipShopInfo`: the
+ * storefront home page is unauthenticated. The ranking is computed behind the
+ * service-role client because `sale_items` is not client-readable, but only the
+ * resulting products cross back out — no unit counts, no revenue, no cost.
+ *
+ * Ranks first and filters to visible products second, so a hidden or deleted
+ * best seller gives up its slot to the next product down rather than leaving a
+ * hole in the rail. Returns fewer than `limit` (or nothing at all) when the shop
+ * has not sold that many distinct products yet: callers decide whether to hide
+ * the section, rather than this inventing a ranking the sales data cannot back.
+ */
+export async function fetchBestSellingProducts(
+  limit: number = 10,
+): Promise<Product[]> {
+  const rankedIds = await getBestSellingProductIds();
+  if (rankedIds.length === 0) return [];
+
+  const rows = await getStorefrontProductsByIds(rankedIds);
+  const byId = new Map(rows.map((row) => [row.id, mapProductRow(row)]));
+
+  // `in()` does not preserve the ranking, so rebuild it from the id order.
+  return rankedIds
+    .map((id) => byId.get(id))
+    .filter((p): p is Product => p !== undefined)
+    .slice(0, limit);
 }
 
 /** A variant as submitted from the product form. `id` set = existing row. */

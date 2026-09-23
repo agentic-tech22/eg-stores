@@ -85,6 +85,18 @@ export interface ProductRow {
   updated_at: string;
 }
 
+/**
+ * The subset of a Product that is safe to hand to a client component.
+ *
+ * `Product` carries `costPrice`, and the storefront readers (`fetchProducts`,
+ * `fetchProductById`, `fetchFeaturedProducts`) deliberately skip the finance
+ * redaction so they don't read cookies and force dynamic rendering. React
+ * serializes every prop crossing a server → client boundary into the RSC
+ * payload, so passing a raw `Product` to a client component publishes the
+ * shop's margins in the page source. Map with `toPublicProduct` first.
+ */
+export type PublicProduct = Omit<Product, "costPrice">;
+
 export interface ProductVariant {
   id: string;
   productId: string;
@@ -218,3 +230,19 @@ export interface ComboWithItems extends Product {
   /** Sum of each component's (price × quantity), the pre-discount total. */
   originalPrice: number;
 }
+
+/** Cost-free `ProductWithVariants`, for client components. See PublicProduct. */
+export type PublicProductWithVariants = Omit<ProductWithVariants, "costPrice">;
+
+/** A combo item whose nested component product carries no cost price. */
+export interface PublicComboItem extends Omit<ComboItem, "component"> {
+  component?: PublicProduct;
+}
+
+/** Cost-free `ComboWithItems`, including its nested components. */
+export type PublicComboWithItems = Omit<
+  ComboWithItems,
+  "costPrice" | "items"
+> & {
+  items: PublicComboItem[];
+};

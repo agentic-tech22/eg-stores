@@ -5,6 +5,12 @@ export interface NavbarConfig {
   links: { label: string; href: string }[];
   ctaText: string;
   ctaHref?: string;
+  /**
+   * Show the live cart indicator in the header. Only meaningful inside the
+   * (site) route group, where a CartProvider is mounted; defaults to false so
+   * the navbar stays usable on pages without one.
+   */
+  showCart?: boolean;
 }
 
 export interface FooterConfig {
