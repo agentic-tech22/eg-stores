@@ -5,6 +5,8 @@ import { useCart } from "@/components/cart/cart-context";
 import { cn } from "@/utils/cn";
 
 interface CartButtonProps {
+  /** `ink` for the dark header, `light` for a white surface. */
+  tone?: "ink" | "light";
   className?: string;
 }
 
@@ -14,17 +16,23 @@ interface CartButtonProps {
  *
  * The count comes from the cart context, which hydrates from localStorage in an
  * effect, so the badge is absent on the server render and appears on hydration.
- * That is intentional: rendering a count during SSR would mismatch.
+ * That is intentional: rendering a count during SSR would mismatch. The badge
+ * pops in on arrival rather than blinking into place, which is also what makes
+ * "that went in the cart" legible when it changes on a later add.
  */
-export function CartButton({ className }: CartButtonProps) {
+export function CartButton({ tone = "light", className }: CartButtonProps) {
   const { count } = useCart();
+  const ink = tone === "ink";
 
   return (
     <Link
       href="/cart"
       aria-label={count > 0 ? `Cart, ${count} items` : "Cart, empty"}
       className={cn(
-        "text-text-primary hover:bg-surface hover:text-primary focus-visible:ring-ring relative inline-flex h-10 w-10 items-center justify-center rounded-full transition-colors focus-visible:ring-2 focus-visible:outline-none",
+        "focus-visible:ring-ring relative inline-flex h-10 w-10 items-center justify-center rounded-full transition-colors focus-visible:ring-2 focus-visible:outline-none",
+        ink
+          ? "text-shop-ink-text hover:bg-shop-ink-hover hover:text-shop-ink-text-active"
+          : "text-text-primary hover:bg-surface hover:text-primary",
         className,
       )}
     >
@@ -44,7 +52,15 @@ export function CartButton({ className }: CartButtonProps) {
       </svg>
 
       {count > 0 && (
-        <span className="bg-secondary absolute -top-0.5 -right-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-bold text-white">
+        <span
+          /* Keyed on the count so a change remounts the badge and replays the
+             pop, instead of silently swapping the number. */
+          key={count}
+          className={cn(
+            "animate-pop absolute -top-0.5 -right-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-bold text-white",
+            ink ? "bg-shop-ink-accent" : "bg-secondary",
+          )}
+        >
           {count > 99 ? "99+" : count}
         </span>
       )}

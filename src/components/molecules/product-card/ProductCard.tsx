@@ -27,7 +27,7 @@ function ImagePlaceholder() {
   return (
     <div className="bg-surface text-text-secondary/30 flex h-full w-full items-center justify-center">
       <svg
-        className="h-14 w-14"
+        className="h-12 w-12"
         fill="none"
         viewBox="0 0 24 24"
         strokeWidth={0.6}
@@ -48,6 +48,11 @@ function ImagePlaceholder() {
  * The one product tile for the whole public site — home page rails and the
  * /products grid both render this, so a change to how a product presents itself
  * happens in exactly one place.
+ *
+ * Sized to sit two-up on a phone rather than one-up. A single full-width card
+ * per row turns a 40-item catalogue into a very long scroll and makes browsing
+ * feel like reading; two-up is what every shop people already use does, and it
+ * lets them compare two things without scrolling between them.
  *
  * Products that need a choice before they can be bought (variants, combos) link
  * through to their detail page instead of adding straight to the cart: picking a
@@ -86,7 +91,7 @@ export function ProductCard({
   return (
     <article
       className={cn(
-        "group border-border/60 bg-background hover:border-primary/30 hover:shadow-primary/5 flex h-full flex-col overflow-hidden rounded-2xl border transition-all duration-300 hover:-translate-y-1 hover:shadow-xl",
+        "group border-border/70 bg-background hover:border-primary/40 flex h-full flex-col overflow-hidden rounded-2xl border transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_40px_-18px_rgba(26,26,46,0.35)]",
         className,
       )}
     >
@@ -94,7 +99,7 @@ export function ProductCard({
         href={href}
         className="bg-surface focus-visible:ring-ring relative block aspect-square overflow-hidden focus-visible:ring-2 focus-visible:outline-none"
       >
-        <div className="absolute top-3 left-3 z-10 flex flex-col items-start gap-2">
+        <div className="absolute top-2.5 left-2.5 z-10 flex flex-col items-start gap-1.5">
           {product.isCombo && <BadgePill tone="brand">Combo</BadgePill>}
           {soldOut && <BadgePill tone="neutral">Sold out</BadgePill>}
           {lowStock && (
@@ -110,37 +115,39 @@ export function ProductCard({
             src={product.imageUrl}
             alt={product.title}
             loading="lazy"
-            className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+            className={cn(
+              "h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.08]",
+              soldOut && "opacity-60 grayscale",
+            )}
           />
         ) : (
           <ImagePlaceholder />
         )}
+
+        {/* A single slow highlight passing over the photo on hover. It is the
+            one flourish on the tile, and it reads as glass rather than as an
+            animation, which is the point. */}
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 translate-x-[-120%] bg-linear-to-r from-transparent via-white/25 to-transparent transition-transform duration-[900ms] ease-out group-hover:translate-x-[120%] motion-reduce:hidden"
+        />
       </Link>
 
-      <div className="flex flex-1 flex-col gap-3 p-5">
+      <div className="flex flex-1 flex-col gap-2 p-3 sm:p-4">
         <Link
           href={href}
-          className="focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none"
+          className="focus-visible:ring-ring rounded focus-visible:ring-2 focus-visible:outline-none"
         >
           <Typography
             as="h3"
-            variant="h4"
-            className="group-hover:text-primary line-clamp-2 transition-colors"
+            variant="body"
+            className="font-heading group-hover:text-primary line-clamp-2 font-semibold transition-colors"
           >
             {product.title}
           </Typography>
         </Link>
 
-        {product.description && (
-          <Typography
-            variant="bodySmall"
-            className="text-text-secondary line-clamp-2"
-          >
-            {product.description}
-          </Typography>
-        )}
-
-        <div className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-2">
+        <div className="mt-auto flex flex-col gap-2.5 pt-1">
           <Price
             amount={product.price}
             currencyCode={currency.code}
@@ -152,7 +159,7 @@ export function ProductCard({
             (needsChoice ? (
               <Link
                 href={href}
-                className="border-primary/20 text-primary hover:border-primary/40 hover:bg-primary/[0.03] focus-visible:ring-ring inline-flex h-9 items-center justify-center rounded-full border px-4 text-xs font-bold tracking-wide transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                className="border-border text-text-primary hover:border-primary hover:bg-primary hover:text-white focus-visible:ring-ring inline-flex h-9 w-full items-center justify-center rounded-full border text-xs font-bold tracking-wide transition-colors focus-visible:ring-2 focus-visible:outline-none"
               >
                 View options
               </Link>
@@ -161,7 +168,7 @@ export function ProductCard({
                 type="button"
                 onClick={handleAdd}
                 disabled={soldOut}
-                className="bg-primary hover:bg-primary/85 focus-visible:ring-ring inline-flex h-9 items-center justify-center rounded-full px-4 text-xs font-bold tracking-wide text-white transition-all focus-visible:ring-2 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-40"
+                className="bg-primary hover:bg-primary/85 focus-visible:ring-ring inline-flex h-9 w-full items-center justify-center rounded-full text-xs font-bold tracking-wide text-white transition-all focus-visible:ring-2 focus-visible:outline-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40"
               >
                 {soldOut ? "Sold out" : "Add to cart"}
               </button>

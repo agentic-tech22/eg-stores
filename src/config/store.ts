@@ -47,3 +47,30 @@ export function mapEmbedUrl(address: string): string {
 export function mapDirectionsUrl(address: string): string {
   return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`;
 }
+
+/**
+ * The home page hero.
+ *
+ * `coverImage` is the photograph behind the headline: the shop's own counter
+ * shot of the Omega automatic, chosen because it is the only watch photo in
+ * the catalogue that is already lit for this — dark, with the display case and
+ * the EG Store sign behind it — rather than a flat-lay on a white desk, which
+ * goes grey under the hero's ink wash.
+ *
+ * It is copied into `public/assets/images/` rather than linked from the
+ * product that supplied it, so re-photographing or deleting that product
+ * cannot blank the front page. Swap the file, or point this at another path
+ * or a remote URL.
+ *
+ * Set it to null and the hero falls back to the shop's own product
+ * photography, blurred into a wash behind the headline. That fallback is
+ * deliberate: a stock photo of a generic phone shop is worse than no photo at
+ * all, because it is the one thing on the page that is not actually this shop.
+ */
+export const STORE_HERO: {
+  coverImage: string | null;
+  tagline: string;
+} = {
+  coverImage: "/assets/images/hero-cover.jpg",
+  tagline: "Mobile accessories · Audio · Charging · Wearables",
+};

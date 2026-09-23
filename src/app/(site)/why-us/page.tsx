@@ -10,6 +10,7 @@ import {
 } from "@/components/sections/value-props/ValueProps";
 import { SUPPORT_WHATSAPP_URL } from "@/config/contact";
 import { siteConfig } from "@/config/site";
+import { STORE_HERO } from "@/config/store";
 import { fetchMembershipShopInfo } from "@/services/membership.service";
 
 const siteTitle = siteConfig.defaultSiteName;
@@ -138,6 +139,7 @@ export default async function WhyUsPage() {
           "eSewa & cash on delivery",
           "Delivery across Nepal",
         ]}
+        coverImage={STORE_HERO.coverImage}
       />
 
       <ValueProps

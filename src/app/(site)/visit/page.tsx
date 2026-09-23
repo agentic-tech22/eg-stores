@@ -9,7 +9,7 @@ import {
 } from "@/components/sections/value-props/ValueProps";
 import { SUPPORT_WHATSAPP_URL } from "@/config/contact";
 import { siteConfig } from "@/config/site";
-import { STORE_DIRECTIONS, STORE_HOURS } from "@/config/store";
+import { STORE_DIRECTIONS, STORE_HERO, STORE_HOURS } from "@/config/store";
 import { fetchMembershipShopInfo } from "@/services/membership.service";
 
 const siteTitle = siteConfig.defaultSiteName;
@@ -85,6 +85,7 @@ export default async function VisitPage() {
         primaryCta={{ label: "Message us on WhatsApp", href: SUPPORT_WHATSAPP_URL }}
         secondaryCta={{ label: "Browse the shop", href: "/products" }}
         highlights={["Open six days a week", "Same-day pickup", "Setup at the counter"]}
+        coverImage={STORE_HERO.coverImage}
       />
 
       <StoreDetails

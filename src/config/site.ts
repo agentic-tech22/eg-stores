@@ -1,6 +1,10 @@
 export const siteConfig = {
   defaultSiteName: "EG Stores",
-  defaultDescription: "Mobile phones, accessories and repairs — sold and tracked in one place",
+  // Shown under the logo in the storefront footer, so it describes the shop to a
+  // customer. It used to read "sold and tracked in one place", which described
+  // the software to its operator, and claimed repairs the shop does not do.
+  defaultDescription:
+    "Mobile accessories and everyday gadgets — audio, charging, wearables and more, from a counter you can walk into.",
   defaultFontFamily: "Work Sans",
   // Public Google Drive video shown in the landing page's "Watch the product"
   // modal. Paste any Drive share link, e.g.

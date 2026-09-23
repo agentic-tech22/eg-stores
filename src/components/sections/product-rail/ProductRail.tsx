@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Container } from "@/components/atoms/container/Container";
+import { ScrollReveal } from "@/components/atoms/scroll-reveal/ScrollReveal";
 import { Typography } from "@/components/atoms/typography";
 import { ProductCard } from "@/components/molecules/product-card/ProductCard";
 import type { PublicProduct } from "@/types/product.types";
@@ -20,9 +21,10 @@ interface ProductRailProps {
 }
 
 /**
- * A titled grid of products. Used for both "Featured" and "New arrivals" — the
- * only difference between those is the heading and which slice of the catalog
- * the page hands in, so they share one component rather than two near-copies.
+ * A titled grid of products. Used for "Featured", "Best sellers" and "New
+ * arrivals" — the only difference between those is the heading and which slice
+ * of the catalog the page hands in, so they share one component rather than
+ * three near-copies.
  *
  * Renders nothing when there are no products, so a fresh shop with an empty
  * catalog degrades to a shorter page instead of an empty shelf.
@@ -43,11 +45,11 @@ export function ProductRail({
   return (
     <section
       id={id}
-      className={cn("py-16 lg:py-24", surface && "bg-surface", className)}
+      className={cn("py-14 lg:py-20", surface && "bg-surface", className)}
     >
       <Container>
-        <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
-          <div className="flex flex-col gap-3">
+        <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+          <div className="flex flex-col gap-2">
             {eyebrow && (
               <Typography variant="label" className="text-secondary">
                 {eyebrow}
@@ -73,7 +75,7 @@ export function ProductRail({
             >
               {viewAll.label}
               <svg
-                className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
+                className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1"
                 fill="none"
                 viewBox="0 0 24 24"
                 strokeWidth={2}
@@ -90,13 +92,18 @@ export function ProductRail({
           )}
         </div>
 
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {products.map((product) => (
-            <ProductCard
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 md:gap-5 xl:grid-cols-4">
+          {products.map((product, index) => (
+            /* Staggered so the row assembles left to right rather than
+               appearing all at once. Capped at four steps: past that the last
+               card in a long rail waits noticeably for its turn. */
+            <ScrollReveal
               key={product.id}
-              product={product}
-              currency={currency}
-            />
+              delay={(index % 4) * 70}
+              className="h-full"
+            >
+              <ProductCard product={product} currency={currency} />
+            </ScrollReveal>
           ))}
         </div>
       </Container>
