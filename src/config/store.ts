@@ -1,4 +1,4 @@
-// Shop-floor details for the public /visit page.
+// Shop-floor details for the home page’s visit section.
 //
 // Address and phone deliberately do NOT live here: those come from the shop's
 // business profile (Settings → Business) via `fetchMembershipShopInfo`, so they
@@ -6,7 +6,7 @@
 // yet, so they sit here as the single place to edit them.
 //
 // !! These hours are placeholders. Replace them with the shop's real timings
-// before this page goes live — a wrong closing time sends someone to a shut
+// before this goes live — a wrong closing time sends someone to a shut
 // shutter, which is worse than showing no hours at all.
 
 export interface OpeningHours {

@@ -1,29 +1,20 @@
 "use client";
 
+import { RangeSlider } from "@/components/molecules/range-slider/RangeSlider";
 import type { Category } from "@/types/product.types";
 import { formatCurrency } from "@/utils/format-currency";
-import type { PriceBand } from "@/utils/price-bands";
+import { isRangeNarrowed, type PriceRange } from "@/utils/price-range";
 import { cn } from "@/utils/cn";
 
 /** Everything the /products grid narrows itself by. */
 export interface ProductFilterState {
   /** Category id, or "" for all. */
   category: string;
-  /** Index into the price band list, or -1 for any price. */
-  bandIndex: number;
-  inStockOnly: boolean;
-}
-
-export const EMPTY_FILTERS: ProductFilterState = {
-  category: "",
-  bandIndex: -1,
-  inStockOnly: false,
-};
-
-export function isFiltered(state: ProductFilterState): boolean {
-  return (
-    state.category !== "" || state.bandIndex !== -1 || state.inStockOnly
-  );
+  /**
+   * Selected [low, high] price, or null while the shop has no range worth
+   * showing a slider for.
+   */
+  price: [number, number] | null;
 }
 
 interface ProductFiltersProps {
@@ -31,11 +22,25 @@ interface ProductFiltersProps {
   /** How many products sit in each category id, for the counts in the rail. */
   countByCategory: Record<string, number>;
   totalCount: number;
-  bands: PriceBand[];
+  /** Bounds for the price slider, or null to hide it. */
+  range: PriceRange | null;
   currency: { code: string; locale: string };
   value: ProductFilterState;
   onChange: (next: ProductFilterState) => void;
   className?: string;
+}
+
+/** The filters in their untouched state, for a given price range. */
+export function emptyFilters(range: PriceRange | null): ProductFilterState {
+  return { category: "", price: range ? [range.min, range.max] : null };
+}
+
+export function isFiltered(
+  state: ProductFilterState,
+  range: PriceRange | null,
+): boolean {
+  if (state.category !== "") return true;
+  return Boolean(range && state.price && isRangeNarrowed(state.price, range));
 }
 
 function GroupHeading({ children }: { children: React.ReactNode }) {
@@ -97,20 +102,18 @@ function FilterRow({
 /**
  * The /products filter rail, on the shop's ink.
  *
- * It replaces a row of category pills that sat above the grid. Pills only ever
- * offered one axis, they pushed the first product further down the page with
- * every category the shop added, and there was nowhere to hang price or
- * availability. A rail costs a column on desktop and gives the shopper three
- * axes that stay on screen while they scroll the grid.
+ * Two axes, category and price. Availability used to be a third, as an "in
+ * stock only" checkbox; the listing now hides sold-out stock outright, so the
+ * checkbox was offering to turn off something nobody wants turned off.
  *
- * Purely controlled: it owns no state, so the same panel renders in the desktop
- * column and inside the mobile drawer without the two disagreeing.
+ * Purely controlled: it owns no state, so the same panel renders in the
+ * desktop column and inside the mobile drawer without the two disagreeing.
  */
 export function ProductFilters({
   categories,
   countByCategory,
   totalCount,
-  bands,
+  range,
   currency,
   value,
   onChange,
@@ -119,22 +122,16 @@ export function ProductFilters({
   const money = (amount: number) =>
     formatCurrency(amount, currency.code, currency.locale);
 
-  function bandLabel(band: PriceBand): string {
-    if (band.max === null) return `${money(band.min)} and above`;
-    if (band.min === 0) return `Under ${money(band.max)}`;
-    return `${money(band.min)} - ${money(band.max)}`;
-  }
-
   return (
     <div className={cn("flex flex-col gap-7", className)}>
       <div className="flex items-center justify-between gap-3">
         <p className="font-heading text-shop-ink-text-active text-sm font-bold">
           Filters
         </p>
-        {isFiltered(value) && (
+        {isFiltered(value, range) && (
           <button
             type="button"
-            onClick={() => onChange(EMPTY_FILTERS)}
+            onClick={() => onChange(emptyFilters(range))}
             className="text-shop-ink-accent hover:text-shop-ink-text-active cursor-pointer text-xs font-semibold transition-colors"
           >
             Reset
@@ -165,41 +162,19 @@ export function ProductFilters({
         </div>
       )}
 
-      {bands.length > 0 && (
+      {range && value.price && (
         <div>
           <GroupHeading>Price</GroupHeading>
-          <div className="flex flex-col gap-0.5">
-            <FilterRow
-              label="Any price"
-              active={value.bandIndex === -1}
-              onClick={() => onChange({ ...value, bandIndex: -1 })}
-            />
-            {bands.map((band, index) => (
-              <FilterRow
-                key={`${band.min}-${band.max ?? "up"}`}
-                label={bandLabel(band)}
-                active={value.bandIndex === index}
-                onClick={() => onChange({ ...value, bandIndex: index })}
-              />
-            ))}
-          </div>
+          <RangeSlider
+            min={range.min}
+            max={range.max}
+            step={range.step}
+            value={value.price}
+            onChange={(price) => onChange({ ...value, price })}
+            formatValue={money}
+          />
         </div>
       )}
-
-      <div>
-        <GroupHeading>Availability</GroupHeading>
-        <label className="text-shop-ink-text hover:bg-shop-ink-hover hover:text-shop-ink-text-active flex cursor-pointer items-center gap-3 rounded-lg px-2.5 py-2 text-sm transition-colors">
-          <input
-            type="checkbox"
-            checked={value.inStockOnly}
-            onChange={(event) =>
-              onChange({ ...value, inStockOnly: event.target.checked })
-            }
-            className="accent-shop-ink-accent h-4 w-4 shrink-0 cursor-pointer rounded"
-          />
-          In stock only
-        </label>
-      </div>
     </div>
   );
 }

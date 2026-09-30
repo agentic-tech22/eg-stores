@@ -1,8 +1,13 @@
 import type { Metadata } from "next";
 import { SiteShell } from "@/components/organisms/site-shell";
 import { CategoryStrip } from "@/components/sections/category-strip/CategoryStrip";
-import { Hero, type HeroShowcaseItem } from "@/components/sections/hero/Hero";
+import { Faq, type FaqItem } from "@/components/sections/faq/Faq";
+import {
+  HeroCarousel,
+  type HeroSlide,
+} from "@/components/sections/hero-carousel/HeroCarousel";
 import { ProductRail } from "@/components/sections/product-rail/ProductRail";
+import { StoreDetails } from "@/components/sections/store-details/StoreDetails";
 import { StoreVisit } from "@/components/sections/store-visit/StoreVisit";
 import {
   TrustStrip,
@@ -14,7 +19,7 @@ import {
 } from "@/components/sections/value-props/ValueProps";
 import { SUPPORT_WHATSAPP_URL } from "@/config/contact";
 import { siteConfig } from "@/config/site";
-import { STORE_HERO } from "@/config/store";
+import { STORE_DIRECTIONS, STORE_HERO, STORE_HOURS } from "@/config/store";
 import { getActiveCurrency } from "@/lib/currency.server";
 import { fetchCategories } from "@/services/category.service";
 import { fetchMembershipShopInfo } from "@/services/membership.service";
@@ -25,6 +30,7 @@ import {
 } from "@/services/product.service";
 import type { Product } from "@/types/product.types";
 import { pickAcrossCategories } from "@/utils/pick-across-categories";
+import { onlyBuyable } from "@/utils/product-availability";
 import { toPublicProducts } from "@/utils/to-public-product";
 
 const siteTitle = siteConfig.defaultSiteName;
@@ -109,6 +115,52 @@ const trustPoints: TrustPoint[] = [
   },
 ];
 
+/**
+ * The questions people actually ask before buying a phone online in Nepal.
+ *
+ * Answers are written against what the shop really does. Warranty and return
+ * wording is deliberately general ("as the brand's warranty allows") rather than
+ * promising a fixed window this codebase cannot enforce — tighten it once the
+ * shop's own policy is settled.
+ */
+const faqs: FaqItem[] = [
+  {
+    question: "Are your products original?",
+    answer:
+      "Yes. We stock genuine units and check each one at the counter before it is handed over or packed. If something is a refurbished or open-box unit, it is described as such on its product page.",
+  },
+  {
+    question: "How do I pay?",
+    answer:
+      "Choose cash on delivery and pay when the courier reaches you. At the shop we also accept Fonepay, Khalti, IME Pay, bank transfer and cash.",
+  },
+  {
+    question: "How long does delivery take?",
+    answer:
+      "Orders are handed to Nepal Can Move once they are packed. Inside Kathmandu valley that is usually the next working day; outside the valley it depends on the route NCM runs to your area. You get a tracking reference either way.",
+  },
+  {
+    question: "Do you deliver outside Kathmandu?",
+    answer:
+      "Yes. We ship anywhere Nepal Can Move delivers, which covers most of the country. Message us on WhatsApp if you are unsure about your location and we will check the route before you order.",
+  },
+  {
+    question: "What if the product has a problem?",
+    answer:
+      "Bring it to the shop, or message us first and we will tell you what to do. Manufacturing faults are handled as the brand's warranty allows, and we will help you raise it rather than leaving you to deal with the manufacturer alone.",
+  },
+  {
+    question: "Can I see the product before buying?",
+    answer:
+      "Come to the shop. You can hold it, power it on and compare models side by side before deciding, and walk out with it the same day.",
+  },
+  {
+    question: "Do you have a membership or loyalty scheme?",
+    answer:
+      "Yes — join the membership and you collect points on what you buy, redeemable against a later purchase at the counter. Signing up takes a phone number.",
+  },
+];
+
 /** Newest first, so the "New arrivals" rail reflects what just landed. */
 function newestFirst(products: Product[]): Product[] {
   return [...products].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -118,7 +170,7 @@ export default async function HomePage() {
   // Every one of these is safe to call unauthenticated: the product/category
   // reads go through the anon-readable tables, and fetchMembershipShopInfo is
   // the deliberately ungated shop-branding reader used by /membership.
-  const [featured, bestSellers, products, categories, shop, currency] =
+  const [allFeatured, allBestSellers, allProducts, categories, shop, currency] =
     await Promise.all([
       fetchFeaturedProducts(8).catch(() => [] as Product[]),
       fetchBestSellingProducts(10).catch(() => [] as Product[]),
@@ -132,6 +184,14 @@ export default async function HomePage() {
       })),
       getActiveCurrency(),
     ]);
+
+  // Sold-out stock is dropped everywhere on the storefront, not just in the
+  // /products grid: a rail of things nobody can buy is worse than a shorter
+  // rail. Variant products and combos survive this — their real stock lives on
+  // their variants and components, not on the product row.
+  const products = onlyBuyable(allProducts);
+  const featured = onlyBuyable(allFeatured);
+  const bestSellers = onlyBuyable(allBestSellers);
 
   // Fall back to the head of the catalog when nothing is flagged featured yet,
   // so a shop that has not curated its homepage still shows stock.
@@ -164,39 +224,66 @@ export default async function HomePage() {
   // scuffed desk in the largest card on the front page. Price is the only
   // signal in the data for which of two watches a shop would lead with, and in
   // practice it also tracks which product got photographed with any care.
-  const heroShowcase: HeroShowcaseItem[] = pickAcrossCategories(
+  const shopName = shop.shopName ?? siteTitle;
+  const categoryNameById = new Map(categories.map((c) => [c.id, c.name]));
+
+  // One product per category for the carousel, spread across the category list
+  // so the slides are three different kinds of thing rather than three watches,
+  // and represented by the dearest of each because the hero is where a shop
+  // leads with its best.
+  const slideProducts = pickAcrossCategories(
     [...featuredSource, ...products].filter((product) => product.imageUrl),
     3,
     (a, b) => {
       if (a.isFeatured !== b.isFeatured) return a.isFeatured ? -1 : 1;
       return b.price - a.price;
     },
-  ).map((product) => ({
-    id: product.id,
-    title: product.title,
-    imageUrl: product.imageUrl,
-    href: `/products/${product.id}`,
-  }));
+  );
 
-  const shopName = shop.shopName ?? siteTitle;
+  // The shop's own slide leads, when there is a cover photograph to lead with.
+  // Without one the carousel opens straight onto stock rather than on a blank
+  // panel wearing the shop's name.
+  const brandSlide: HeroSlide[] = STORE_HERO.coverImage
+    ? [
+        {
+          id: "brand",
+          imageUrl: STORE_HERO.coverImage,
+          eyebrow: STORE_HERO.tagline,
+          title: "Everything for your phone,",
+          titleAccent: "and everything around it.",
+          description: `${shopName} stocks earbuds, headphones, speakers, chargers, powerbanks, car chargers, phone holders, watches and trimmers.`,
+          cta: { label: "Shop everything", href: "/products" },
+        },
+      ]
+    : [];
+
+  const heroSlides: HeroSlide[] = [
+    ...brandSlide,
+    ...slideProducts.map((product) => {
+      const categoryName = product.categoryId
+        ? (categoryNameById.get(product.categoryId) ?? null)
+        : null;
+      return {
+        id: product.id,
+        imageUrl: product.imageUrl as string,
+        eyebrow: categoryName ?? "In stock now",
+        title: product.title,
+        description: product.description ?? undefined,
+        cta: categoryName
+          ? {
+              // The shop’s own casing for its categories, not ours: lowercasing
+              // “Jens Watch” gives “jens watch”, which reads as a typo.
+              label: `Shop ${categoryName}`,
+              href: `/products?category=${product.categoryId}`,
+            }
+          : { label: "View product", href: `/products/${product.id}` },
+      };
+    }),
+  ];
 
   return (
     <SiteShell>
-      <Hero
-        eyebrow={STORE_HERO.tagline}
-        title="Everything for your phone,"
-        titleAccent="and everything around it."
-        description={`${shopName} stocks earbuds, headphones, speakers, chargers, powerbanks, car chargers, phone holders, watches and trimmers. Order in a few taps and pay with eSewa or cash on delivery.`}
-        primaryCta={{ label: "Shop everything", href: "/products" }}
-        secondaryCta={{ label: "Visit the store", href: "/visit" }}
-        highlights={[
-          "Genuine products",
-          "eSewa & cash on delivery",
-          "Delivery across Nepal",
-        ]}
-        coverImage={STORE_HERO.coverImage}
-        showcase={heroShowcase}
-      />
+      <HeroCarousel slides={heroSlides} />
 
       <TrustStrip items={trustPoints} />
 
@@ -235,22 +322,47 @@ export default async function HomePage() {
         currency={currency}
       />
 
+      {/* "Why us" and "Visit" are sections here rather than pages of their
+          own, so the header's links scroll instead of navigating. `scroll-mt`
+          on each keeps its heading clear of the sticky header, which would
+          otherwise sit on top of whatever you just jumped to. */}
       <ValueProps
         id="why-us"
+        className="scroll-mt-28 lg:scroll-mt-32"
         eyebrow="Why us"
         title={`Why people buy from ${shopName}`}
         description="A small shop that treats an online order exactly like someone walking through the door."
         items={valueProps}
       />
 
+      <Faq
+        eyebrow="Before you buy"
+        title="Questions we get asked"
+        description="If yours is not here, message us on WhatsApp — someone at the counter will answer."
+        items={faqs}
+        surface
+      />
+
       <StoreVisit
         id="visit"
+        className="scroll-mt-28 lg:scroll-mt-32"
         eyebrow="Come say hello"
         title="Visit us in store"
         description="Want to hold it before you buy it? Come in, try it out, and walk out with it the same day."
         address={shop.address}
         phone={shop.phone}
         whatsappUrl={SUPPORT_WHATSAPP_URL}
+      />
+
+      {/* The map and opening hours: the actual reason someone follows a
+          "Visit" link, and the one thing the old page had that the section
+          did not. */}
+      <StoreDetails
+        address={shop.address}
+        phone={shop.phone}
+        whatsappUrl={SUPPORT_WHATSAPP_URL}
+        hours={STORE_HOURS}
+        directions={STORE_DIRECTIONS}
       />
     </SiteShell>
   );

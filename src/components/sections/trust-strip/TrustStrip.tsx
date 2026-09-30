@@ -7,7 +7,7 @@ export interface TrustPoint {
   /** SVG path data for a 24x24 stroked icon. */
   iconPath: string;
   title: string;
-  /** One short line. Anything longer belongs on /why-us. */
+  /** One short line. Anything longer belongs in the why-us section. */
   detail: string;
 }
 
@@ -22,7 +22,7 @@ interface TrustStripProps {
  * Distinct from ValueProps further down the page, and deliberately thinner: the
  * job here is to answer "is this shop real and will my money be safe" in the
  * two seconds before the shopper scrolls, not to argue the case. Four items,
- * one line each. The argument is what /why-us is for.
+ * one line each. The argument is what the why-us section is for.
  */
 export function TrustStrip({ items, className }: TrustStripProps) {
   if (items.length === 0) return null;

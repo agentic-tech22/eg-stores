@@ -1,13 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Container } from "@/components/atoms/container/Container";
 import { CartButton } from "@/components/molecules/cart-button/CartButton";
-import {
-  SearchField,
-  SearchFieldFallback,
-} from "@/components/molecules/search-field/SearchField";
 import { SUPPORT_WHATSAPP_TEL, SUPPORT_WHATSAPP_URL } from "@/config/contact";
 import type { NavbarConfig } from "@/types/layout.types";
 import { cn } from "@/utils/cn";
@@ -156,7 +152,7 @@ export function NavbarAesthetic({ config, className }: NavbarAestheticProps) {
       <Container>
         <nav
           className={cn(
-            "flex items-center gap-4 transition-all duration-300",
+            "flex items-center gap-6 transition-all duration-300 lg:gap-10",
             scrolled ? "py-3" : "py-4",
           )}
           aria-label="Main navigation"
@@ -168,7 +164,7 @@ export function NavbarAesthetic({ config, className }: NavbarAestheticProps) {
             {brand}
           </Link>
 
-          <div className="hidden items-center gap-6 lg:flex">
+          <div className="hidden items-center gap-7 lg:flex xl:gap-9">
             {config.links.map((link) => {
               const active = activeHref === link.href;
               return (
@@ -200,24 +196,18 @@ export function NavbarAesthetic({ config, className }: NavbarAestheticProps) {
             })}
           </div>
 
-          {/* Search takes the slack between the links and the actions, so it
-              grows on a wide screen instead of leaving a gap there. */}
-          <div className="ml-auto hidden max-w-sm flex-1 lg:block">
-            {/* The box reads the active search off the URL, which needs a
-                boundary on the prerendered routes (/cart, /checkout). The
-                fallback is the same box without that reading, so the header
-                is never missing its search. */}
-            <Suspense fallback={<SearchFieldFallback />}>
-              <SearchField />
-            </Suspense>
-          </div>
 
-          <div className="ml-auto flex items-center gap-1 lg:ml-0 lg:gap-2">
+          {/* `ml-auto` at every width, not just below `lg`. The search box
+              used to sit between the links and these and carried the
+              `ml-auto` itself; when it moved to the products page nothing
+              pushed the actions right any more and the cart ended up
+              jammed against the last nav link. */}
+          <div className="ml-auto flex items-center gap-1 lg:gap-3">
             {config.showCart && <CartButton tone="ink" />}
 
             <Link
               href={config.ctaHref ?? "/products"}
-              className="bg-shop-ink-accent hover:bg-shop-ink-accent/85 hidden items-center justify-center rounded-full px-5 py-2.5 text-xs font-bold tracking-wide text-white transition-all duration-200 active:scale-95 lg:inline-flex"
+              className="bg-shop-ink-accent hover:bg-shop-ink-accent/85 ml-1 hidden items-center justify-center rounded-full px-6 py-2.5 text-xs font-bold tracking-wide text-white transition-all duration-200 hover:-translate-y-px active:translate-y-0 lg:inline-flex"
             >
               {config.ctaText}
             </Link>
@@ -247,13 +237,6 @@ export function NavbarAesthetic({ config, className }: NavbarAestheticProps) {
           </div>
         </nav>
 
-        {/* Search gets its own row below `lg`: on a phone it is the main way
-            into the catalogue and does not deserve to be behind an icon. */}
-        <div className="pb-3 lg:hidden">
-          <Suspense fallback={<SearchFieldFallback />}>
-            <SearchField />
-          </Suspense>
-        </div>
       </Container>
 
       {/* Mobile drawer. Kept mounted and slid off-screen so it animates both

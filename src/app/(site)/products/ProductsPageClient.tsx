@@ -1,35 +1,33 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { ChevronDown, SlidersHorizontal, X } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Container } from "@/components/atoms/container/Container";
 import { Typography } from "@/components/atoms/typography";
 import { ProductCard } from "@/components/molecules/product-card/ProductCard";
+import { SearchField } from "@/components/molecules/search-field/SearchField";
 import { PageHead } from "@/components/sections/page-head/PageHead";
 import {
   ProductFilters,
+  emptyFilters,
   isFiltered,
   type ProductFilterState,
 } from "@/components/organisms/product-filters/ProductFilters";
 import type { Category, PublicProduct } from "@/types/product.types";
-import { buildPriceBands } from "@/utils/price-bands";
+import { onlyBuyable } from "@/utils/product-availability";
+import { priceRange, withinRange } from "@/utils/price-range";
+import {
+  SORT_OPTIONS,
+  sortProducts,
+  type SortValue,
+} from "@/utils/product-sort";
 import {
   matchesSearch,
   productSearchText,
   searchTerms,
 } from "@/utils/product-search";
 import { cn } from "@/utils/cn";
-
-/** How the grid is ordered. Labels are what the shopper picks from. */
-const SORT_OPTIONS = [
-  { value: "featured", label: "Featured" },
-  { value: "newest", label: "Newest" },
-  { value: "price-low", label: "Price: low to high" },
-  { value: "price-high", label: "Price: high to low" },
-  { value: "name", label: "Name: A to Z" },
-] as const;
-
-type SortValue = (typeof SORT_OPTIONS)[number]["value"];
 
 /** The axes that live in the URL, so a filtered shop can be linked to. */
 const QUERY_PARAM = "q";
@@ -41,26 +39,21 @@ interface ProductsPageClientProps {
   currency?: { code: string; locale: string };
 }
 
-function sortProducts(products: PublicProduct[], sort: SortValue) {
-  const sorted = [...products];
-  switch (sort) {
-    case "newest":
-      return sorted.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-    case "price-low":
-      return sorted.sort((a, b) => a.price - b.price);
-    case "price-high":
-      return sorted.sort((a, b) => b.price - a.price);
-    case "name":
-      return sorted.sort((a, b) => a.title.localeCompare(b.title));
-    case "featured":
-    default:
-      // The shop's own order: flagged products first, then the sort order the
-      // owner dragged them into on the dashboard.
-      return sorted.sort((a, b) => {
-        if (a.isFeatured !== b.isFeatured) return a.isFeatured ? -1 : 1;
-        return a.sortOrder - b.sortOrder;
-      });
-  }
+/** A removable token for one active filter. */
+function Chip({ label, onClear }: { label: string; onClear: () => void }) {
+  return (
+    <span className="border-border bg-surface text-text-primary inline-flex items-center gap-1.5 rounded-full border py-1.5 pr-1.5 pl-3.5 text-xs font-semibold">
+      {label}
+      <button
+        type="button"
+        onClick={onClear}
+        aria-label={`Remove filter ${label}`}
+        className="text-text-secondary hover:bg-border hover:text-text-primary inline-flex h-5 w-5 cursor-pointer items-center justify-center rounded-full transition-colors"
+      >
+        <X className="h-3 w-3" />
+      </button>
+    </span>
+  );
 }
 
 export function ProductsPageClient({
@@ -70,35 +63,49 @@ export function ProductsPageClient({
 }: ProductsPageClientProps) {
   const searchParams = useSearchParams();
 
-  // Read live from the URL rather than seeding state from it once.
-  //
-  // This is what made search look broken: `useState(searchParams.get("q"))`
-  // only runs on mount, and searching from the header does not remount this
-  // page — it changes the query string of the route already on screen. So the
-  // URL said one thing, the grid went on showing another, and every search
-  // after the first appeared to do nothing.
+  // Read live from the URL rather than seeding state from it once. Seeding
+  // only runs on mount, and searching does not remount this page — it changes
+  // the query string of the route already on screen, so the URL said one thing
+  // and the grid went on showing another.
   const search = searchParams.get(QUERY_PARAM) ?? "";
   const category = searchParams.get(CATEGORY_PARAM) ?? "";
 
-  // Price and availability are deliberately not in the URL: they are a
-  // refinement of a listing, not an address for one.
-  const [refinement, setRefinement] = useState({
-    bandIndex: -1,
-    inStockOnly: false,
-  });
+  // Sold-out stock never reaches the grid. A shop that lists what it cannot
+  // sell spends the shopper's attention and its own credibility on nothing.
+  const sellable = useMemo(() => onlyBuyable(products), [products]);
+
+  const range = useMemo(
+    () => priceRange(sellable.map((p) => p.price)),
+    [sellable],
+  );
+
+  // Price is the only filter held locally: a slider mid-drag has no business
+  // rewriting the address bar on every frame.
+  const [price, setPrice] = useState<[number, number] | null>(null);
   const [sort, setSort] = useState<SortValue>("featured");
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const filters: ProductFilterState = { category, ...refinement };
+  // The slider's bounds come from the catalogue, so they change when stock
+  // does. Adopting them during render rather than in an effect avoids a pass
+  // that shows handles pinned to the previous range.
+  const [lastRange, setLastRange] = useState(range);
+  if (lastRange !== range) {
+    setLastRange(range);
+    setPrice(range ? [range.min, range.max] : null);
+  }
+
+  const effectivePrice: [number, number] | null =
+    price ?? (range ? [range.min, range.max] : null);
+
+  const filters: ProductFilterState = { category, price: effectivePrice };
 
   /**
    * Update the query string in place.
    *
    * `window.history` rather than `router.replace`: this route's server
    * component fetches the entire catalogue, and a router navigation would
-   * re-run it just to narrow a list already sitting in the browser. Next
-   * wires these native calls into the router, so `useSearchParams` above
-   * still sees the change.
+   * re-run it just to narrow a list already sitting in the browser. Next wires
+   * these native calls into the router, so `useSearchParams` still sees it.
    */
   function setParams(next: Partial<Record<string, string>>) {
     const params = new URLSearchParams(searchParams.toString());
@@ -114,37 +121,29 @@ export function ProductsPageClient({
     );
   }
 
-  const bands = useMemo(
-    () => buildPriceBands(products.map((p) => p.price)),
-    [products],
-  );
-
   // Only offer categories that actually have something in them, and show how
   // many — a category that filters to an empty grid is a dead end.
-  const { visibleCategories, countByCategory, categoryNameById } = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const product of products) {
-      if (product.categoryId) {
-        counts[product.categoryId] = (counts[product.categoryId] ?? 0) + 1;
+  const { visibleCategories, countByCategory, categoryNameById } =
+    useMemo(() => {
+      const counts: Record<string, number> = {};
+      for (const product of sellable) {
+        if (product.categoryId) {
+          counts[product.categoryId] = (counts[product.categoryId] ?? 0) + 1;
+        }
       }
-    }
-    return {
-      visibleCategories: categories.filter((c) => (counts[c.id] ?? 0) > 0),
-      countByCategory: counts,
-      categoryNameById: new Map(categories.map((c) => [c.id, c.name])),
-    };
-  }, [products, categories]);
+      return {
+        visibleCategories: categories.filter((c) => (counts[c.id] ?? 0) > 0),
+        countByCategory: counts,
+        categoryNameById: new Map(categories.map((c) => [c.id, c.name])),
+      };
+    }, [sellable, categories]);
 
-  // Not wrapped in useMemo: the React Compiler memoizes this for us, and a
-  // manual memo here defeats it — the compiler bails out of optimizing the
-  // whole component when it cannot prove a hand-written dependency list
-  // matches what it would have derived.
+  // Not wrapped in useMemo: the React Compiler memoizes this, and a manual memo
+  // makes it bail out of optimizing the whole component.
   const filtered = (() => {
-    // Tokenised once per search rather than once per product.
     const terms = searchTerms(search.trim());
-    const band = refinement.bandIndex >= 0 ? bands[refinement.bandIndex] : null;
 
-    const matched = products.filter((product) => {
+    const matched = sellable.filter((product) => {
       if (terms.length > 0) {
         const text = productSearchText(
           product,
@@ -153,15 +152,8 @@ export function ProductsPageClient({
         if (!matchesSearch(text, terms)) return false;
       }
       if (category && product.categoryId !== category) return false;
-      if (band) {
-        if (product.price < band.min) return false;
-        if (band.max !== null && product.price >= band.max) return false;
-      }
-      if (refinement.inStockOnly) {
-        // Variant products and combos hold no meaningful product-level stock,
-        // so they are never hidden by this: the detail page is what knows.
-        const needsChoice = product.hasVariants || product.isCombo;
-        if (!needsChoice && product.available <= 0) return false;
+      if (effectivePrice && !withinRange(product.price, effectivePrice)) {
+        return false;
       }
       return true;
     });
@@ -169,18 +161,20 @@ export function ProductsPageClient({
     return sortProducts(matched, sort);
   })();
 
-  const narrowed = isFiltered(filters) || search.trim() !== "";
+  const narrowed = isFiltered(filters, range) || search.trim() !== "";
+  const activeCategoryName = category
+    ? (categoryNameById.get(category) ?? null)
+    : null;
 
   function handleFiltersChange(next: ProductFilterState) {
-    if (next.category !== category) setParams({ [CATEGORY_PARAM]: next.category });
-    setRefinement({
-      bandIndex: next.bandIndex,
-      inStockOnly: next.inStockOnly,
-    });
+    if (next.category !== category) {
+      setParams({ [CATEGORY_PARAM]: next.category });
+    }
+    setPrice(next.price);
   }
 
   function clearEverything() {
-    setRefinement({ bandIndex: -1, inStockOnly: false });
+    setPrice(emptyFilters(range).price);
     setParams({ [QUERY_PARAM]: "", [CATEGORY_PARAM]: "" });
   }
 
@@ -188,8 +182,8 @@ export function ProductsPageClient({
     <ProductFilters
       categories={visibleCategories}
       countByCategory={countByCategory}
-      totalCount={products.length}
-      bands={bands}
+      totalCount={sellable.length}
+      range={range}
       currency={currency}
       value={filters}
       onChange={handleFiltersChange}
@@ -198,19 +192,18 @@ export function ProductsPageClient({
 
   return (
     <>
+      {/* Search sits in the page that holds the results, rather than in the
+          header on every page of the site. */}
       <PageHead
         eyebrow="The shop"
         title="All products"
         meta={
-          <Typography variant="body" className="text-text-secondary">
-            {products.length} {products.length === 1 ? "item" : "items"} in
-            stock across {visibleCategories.length}{" "}
-            {visibleCategories.length === 1 ? "category" : "categories"}
-          </Typography>
+          <div className="w-full sm:w-80">
+            <SearchField tone="light" placeholder="Search the shop..." />
+          </div>
         }
       />
 
-      {/* ----- Rail + grid ----- */}
       <section className="py-8 lg:py-12">
         <Container>
           <div className="flex gap-8">
@@ -223,11 +216,8 @@ export function ProductsPageClient({
             </aside>
 
             <div className="min-w-0 flex-1">
-              {/* Toolbar. There is no search box here on purpose: the header
-                  carries one on every page, at every width, and two search
-                  boxes on one screen only raises the question of which is
-                  which. The active term shows as a chip instead. */}
-              <div className="mb-6 flex flex-col gap-3">
+              {/* Toolbar */}
+              <div className="mb-6 flex flex-col gap-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <button
@@ -235,22 +225,9 @@ export function ProductsPageClient({
                       onClick={() => setDrawerOpen(true)}
                       className="border-border text-text-primary hover:border-primary hover:text-primary inline-flex cursor-pointer items-center gap-2 rounded-full border px-4 py-2 text-xs font-bold transition-colors lg:hidden"
                     >
-                      <svg
-                        className="h-4 w-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        strokeWidth={2}
-                        stroke="currentColor"
-                        aria-hidden="true"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M3 6h18M6 12h12M10 18h4"
-                        />
-                      </svg>
+                      <SlidersHorizontal className="h-4 w-4" />
                       Filters
-                      {isFiltered(filters) && (
+                      {isFiltered(filters, range) && (
                         <span className="bg-primary h-1.5 w-1.5 rounded-full" />
                       )}
                     </button>
@@ -259,37 +236,75 @@ export function ProductsPageClient({
                       variant="bodySmall"
                       className="text-text-secondary"
                     >
-                      Showing {filtered.length} of {products.length}
-                      {search.trim() && (
-                        <>
-                          {" for "}
-                          <span className="text-text-primary font-semibold">
-                            &ldquo;{search.trim()}&rdquo;
-                          </span>
-                        </>
-                      )}
+                      Showing {filtered.length} of {sellable.length}
                     </Typography>
                   </div>
 
-                  <label className="flex items-center gap-2">
+                  <label className="flex shrink-0 items-center gap-2">
                     <span className="text-text-secondary text-xs font-medium">
                       Sort
                     </span>
-                    <select
-                      value={sort}
-                      onChange={(event) =>
-                        setSort(event.target.value as SortValue)
-                      }
-                      className="border-border bg-background text-text-primary focus:border-primary cursor-pointer rounded-full border px-4 py-2 text-xs font-semibold transition-colors focus:outline-none"
-                    >
-                      {SORT_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
+                    {/* Native arrow suppressed and replaced with our own, the
+                        same way the admin Select does it. Left native, the
+                        browser draws its arrow inside the right padding and the
+                        longest label runs underneath it. The width is fixed
+                        because the labels differ in length: sized to content,
+                        picking a different sort shifted the whole toolbar. */}
+                    <div className="relative">
+                      <select
+                        value={sort}
+                        onChange={(event) =>
+                          setSort(event.target.value as SortValue)
+                        }
+                        className="border-border bg-background text-text-primary hover:border-primary/50 focus-visible:border-primary focus-visible:ring-primary/20 w-44 cursor-pointer appearance-none rounded-full border py-2 pr-9 pl-4 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                      >
+                        {SORT_OPTIONS.map((option) => (
+                          // Explicit colours: the popup is drawn by the OS, and
+                          // options left to inherit come out dark-on-dark for
+                          // anyone running a dark system theme.
+                          <option
+                            key={option.value}
+                            value={option.value}
+                            className="bg-background text-text-primary"
+                          >
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown
+                        aria-hidden="true"
+                        className="text-text-secondary pointer-events-none absolute top-1/2 right-3.5 h-4 w-4 -translate-y-1/2"
+                      />
+                    </div>
                   </label>
                 </div>
+
+                {/* What is narrowing the grid, and a way out of each. Without
+                    this the only record of an active filter is a highlighted
+                    row in a rail that is off-screen on a phone. */}
+                {narrowed && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {search.trim() && (
+                      <Chip
+                        label={`"${search.trim()}"`}
+                        onClear={() => setParams({ [QUERY_PARAM]: "" })}
+                      />
+                    )}
+                    {activeCategoryName && (
+                      <Chip
+                        label={activeCategoryName}
+                        onClear={() => setParams({ [CATEGORY_PARAM]: "" })}
+                      />
+                    )}
+                    <button
+                      type="button"
+                      onClick={clearEverything}
+                      className="text-text-secondary hover:text-primary cursor-pointer text-xs font-semibold underline-offset-4 transition-colors hover:underline"
+                    >
+                      Clear all
+                    </button>
+                  </div>
+                )}
               </div>
 
               {filtered.length > 0 ? (
@@ -325,9 +340,8 @@ export function ProductsPageClient({
         </Container>
       </section>
 
-      {/* ----- Mobile filter drawer -----
-          Kept mounted and slid off-screen so it animates both ways and so the
-          filter choices survive closing it. */}
+      {/* Mobile filter drawer. Kept mounted and slid off-screen so it animates
+          both ways and the choices survive closing it. */}
       <div
         className={cn(
           "fixed inset-0 z-50 lg:hidden",
@@ -358,20 +372,7 @@ export function ProductsPageClient({
               aria-label="Close filters"
               className="text-shop-ink-text hover:bg-shop-ink-hover hover:text-shop-ink-text-active flex h-9 w-9 cursor-pointer items-center justify-center rounded-full transition-colors"
             >
-              <svg
-                className="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={1.8}
-                stroke="currentColor"
-                aria-hidden="true"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
+              <X className="h-5 w-5" />
             </button>
           </div>
 

@@ -12,12 +12,20 @@ import { siteConfig } from "@/config/site";
 import { SUPPORT_WHATSAPP_URL } from "@/config/contact";
 import type { FooterConfig, NavbarConfig } from "@/types/layout.types";
 
-/** Primary header navigation, left to right. */
+/**
+ * Primary header navigation, left to right.
+ *
+ * "Why us" and "Visit" are hash links, not routes: both used to be pages of
+ * their own that largely restated sections already on the home page, so they
+ * are sections now and the header scrolls to them. The navbar resolves a
+ * bare "#visit" to "/#visit" when you are not on the home page (see
+ * useResolvedHref), so these work from anywhere on the site.
+ */
 export const SITE_NAV_LINKS = [
   { label: "Home", href: "/" },
   { label: "Shop", href: "/products" },
-  { label: "Why us", href: "/why-us" },
-  { label: "Visit", href: "/visit" },
+  { label: "Why us", href: "#why-us" },
+  { label: "Visit", href: "#visit" },
 ] as const;
 
 /** Header config shared by every public page. */
@@ -45,8 +53,8 @@ export const siteFooterConfig: FooterConfig = {
     {
       group: "Company",
       items: [
-        { label: "Why us", href: "/why-us" },
-        { label: "Visit the store", href: "/visit" },
+        { label: "Why us", href: "/#why-us" },
+        { label: "Visit the store", href: "/#visit" },
         { label: "WhatsApp us", href: SUPPORT_WHATSAPP_URL },
       ],
     },
