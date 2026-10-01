@@ -21,7 +21,7 @@ export function AuthShell({ title, subtitle, children }: AuthShellProps) {
     <div className="admin-root bg-admin-bg flex min-h-screen items-center justify-center px-4">
       <div className="relative z-10 w-full max-w-md">
         <div className="mb-8 text-center">
-          <BrandMark className="mx-auto h-14 w-14 rounded-2xl text-lg" />
+          <BrandMark tone="onLight" className="mx-auto h-14 w-auto" />
           <h1 className="text-admin-text mt-5 text-2xl font-extrabold tracking-tight">
             {title}
           </h1>

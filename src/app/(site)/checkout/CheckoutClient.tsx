@@ -12,12 +12,15 @@ import {
   ShieldCheck,
   ShoppingBag,
   Trash2,
-  Wallet,
+  // Wallet, // eSewa disabled - see the note on PaymentMethod below
 } from "lucide-react";
 import { Container } from "@/components/atoms/container/Container";
 import { Typography } from "@/components/atoms/typography";
+import { CheckoutSteps } from "@/components/molecules/checkout-steps/CheckoutSteps";
+import { PageHead } from "@/components/sections/page-head/PageHead";
 import { cartItemKey, useCart } from "@/components/cart/cart-context";
-import { EsewaPaymentButton } from "@/components/payment/EsewaPaymentButton";
+// eSewa disabled - see the note on PaymentMethod below.
+// import { EsewaPaymentButton } from "@/components/payment/EsewaPaymentButton";
 import {
   placePublicOrder,
   fetchOrderSummary,
@@ -31,7 +34,25 @@ interface CheckoutClientProps {
   currency: { code: string; locale: string };
 }
 
-type PaymentMethod = "cod" | "esewa";
+/**
+ * Payment methods offered at checkout.
+ *
+ * eSewa is switched off. Everything it needs is still in the tree and
+ * untouched - the `@/lib/esewa` actions, `EsewaPaymentButton`, and the
+ * /payment/esewa/success and /failure routes that redirect back here - so
+ * turning it back on is a matter of uncommenting, in this file only:
+ *
+ *   1. the `Wallet` icon and `EsewaPaymentButton` imports above
+ *   2. `| "esewa"` on the line below
+ *   3. the second radio in the Payment method fieldset
+ *   4. the `EsewaPaymentButton` branch under it
+ *   5. the eSewa line of the summary note
+ *
+ * The redirect handler further down is deliberately left live: nothing can
+ * send a shopper back here with a `?status=` while the option is hidden, so
+ * it costs nothing, and leaving it means step 6 does not exist.
+ */
+type PaymentMethod = "cod"; // | "esewa"
 
 export function CheckoutClient({ currency }: CheckoutClientProps) {
   const { items, subtotal, clear, updateQuantity, removeItem } = useCart();
@@ -64,10 +85,10 @@ export function CheckoutClient({ currency }: CheckoutClientProps) {
   };
   const showError = (field: keyof typeof errors) => triedSubmit && errors[field];
   const fieldClass = (field: keyof typeof errors) =>
-    `w-full rounded-xl border bg-background/60 px-4 py-3 text-text-primary focus:outline-none ${
+    `w-full rounded-xl border bg-background px-4 py-3 text-text-primary focus:outline-none ${
       showError(field)
-        ? "border-red-400 focus:border-red-400"
-        : "border-border/50 focus:border-secondary"
+        ? "border-destructive focus:border-destructive"
+        : "border-border focus:border-primary"
     }`;
 
   // Handle the redirect back from the eSewa callback (success/failed/cancelled).
@@ -149,23 +170,30 @@ export function CheckoutClient({ currency }: CheckoutClientProps) {
   if (done) {
     const paid = summary?.paymentStatus === "paid";
     return (
-      <Container size="md" className="py-24">
-        <div className="mx-auto max-w-lg text-center">
-          <CheckCircle2 className="mx-auto mb-6 h-16 w-16 text-secondary" />
-          <Typography variant="h2" className="mb-3 italic">
-            {paid ? "Payment successful!" : "Order placed!"}
-          </Typography>
-          <Typography variant="bodyLarge" className="mb-8 text-text-secondary">
-            Thank you{summary?.customerName ? `, ${summary.customerName}` : ""}, we&rsquo;ve
-            received your order and will be in touch shortly.
-          </Typography>
-        </div>
+      <>
+        <PageHead
+          eyebrow="Thank you"
+          title={paid ? "Payment successful" : "Order placed"}
+          meta={<CheckoutSteps current="done" />}
+        />
+        <section className="py-10 lg:py-16">
+          <Container size="md">
+            <div className="mx-auto max-w-xl">
+              <div className="border-border/70 bg-background flex flex-col items-center gap-3 rounded-2xl border p-8 text-center">
+                <span className="bg-primary/10 text-primary flex h-14 w-14 items-center justify-center rounded-full">
+                  <CheckCircle2 className="h-7 w-7" />
+                </span>
+                <Typography variant="body" className="text-text-primary">
+                  Thank you{summary?.customerName ? `, ${summary.customerName}` : ""}, we&rsquo;ve
+                  received your order and will be in touch shortly.
+                </Typography>
+              </div>
 
         {summary ? (
-          <div className="mx-auto max-w-lg rounded-2xl border border-border/50 bg-surface/50 p-6 text-left">
+          <div className="mx-auto max-w-lg rounded-2xl border border-border bg-surface p-6 text-left">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
-                <Typography variant="bodySmall" className="text-text-secondary">
+                <Typography variant="bodySmall" className="text-text-primary">
                   Order
                 </Typography>
                 <Typography variant="h4">#{summary.orderNumber}</Typography>
@@ -173,15 +201,15 @@ export function CheckoutClient({ currency }: CheckoutClientProps) {
               <span
                 className={`rounded-full px-3 py-1 text-sm font-semibold ${
                   paid
-                    ? "bg-secondary/5 text-secondary"
-                    : "bg-background/60 text-text-secondary"
+                    ? "bg-secondary/5 text-primary"
+                    : "bg-background text-text-primary"
                 }`}
               >
-                {paid ? "Paid · eSewa" : "Pay on delivery"}
+                {paid ? "Paid" : "Pay on delivery"}
               </span>
             </div>
 
-            <ul className="divide-y divide-border/30 border-y border-border/30">
+            <ul className="divide-y divide-border/70 border-y border-border/70">
               {summary.items.map((it, i) => (
                 <li
                   key={i}
@@ -190,7 +218,7 @@ export function CheckoutClient({ currency }: CheckoutClientProps) {
                   <span className="text-text-primary">
                     {it.quantity} × {it.title}
                     {it.variantLabel ? (
-                      <span className="text-text-secondary"> ({it.variantLabel})</span>
+                      <span className="text-text-primary"> ({it.variantLabel})</span>
                     ) : null}
                   </span>
                   <span className="shrink-0 font-medium text-text-primary">
@@ -201,74 +229,98 @@ export function CheckoutClient({ currency }: CheckoutClientProps) {
             </ul>
 
             <dl className="mt-4 space-y-1.5 text-sm">
-              <div className="flex justify-between text-text-secondary">
+              <div className="flex justify-between text-text-primary">
                 <dt>Subtotal</dt>
                 <dd>{money(summary.subtotal)}</dd>
               </div>
               {summary.discountAmount > 0 ? (
-                <div className="flex justify-between text-text-secondary">
+                <div className="flex justify-between text-text-primary">
                   <dt>Discount</dt>
                   <dd>−{money(summary.discountAmount)}</dd>
                 </div>
               ) : null}
               {summary.codCharge > 0 ? (
-                <div className="flex justify-between text-text-secondary">
+                <div className="flex justify-between text-text-primary">
                   <dt>Delivery (COD)</dt>
                   <dd>{money(summary.codCharge)}</dd>
                 </div>
               ) : null}
-              <div className="flex justify-between border-t border-border/50 pt-2 text-base font-bold text-text-primary">
+              <div className="flex justify-between border-t border-border pt-2 text-base font-bold text-text-primary">
                 <dt>Total</dt>
                 <dd>{money(summary.total)}</dd>
               </div>
             </dl>
           </div>
         ) : (
-          <div className="mx-auto max-w-lg rounded-2xl border border-border/30 bg-surface/50 p-6 text-center text-sm text-text-secondary">
+          <div className="mx-auto max-w-lg rounded-2xl border border-border/70 bg-surface p-6 text-center text-sm text-text-primary">
             Loading your order details…
           </div>
         )}
 
-        <div className="mt-8 text-center">
-          <Link
-            href="/products"
-            className="inline-flex rounded-full bg-secondary px-8 py-3 font-bold text-white transition-colors hover:bg-primary"
-          >
-            Continue shopping
-          </Link>
-        </div>
-      </Container>
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
+                <Link
+                  href="/products"
+                  className="bg-primary hover:bg-primary/85 inline-flex items-center justify-center rounded-full px-8 py-3 text-xs font-bold tracking-wide text-white transition-all active:scale-[0.98]"
+                >
+                  Continue shopping
+                </Link>
+                <Link
+                  href="/"
+                  className="border-border text-text-primary hover:border-primary hover:text-primary inline-flex items-center justify-center rounded-full border px-8 py-3 text-xs font-bold tracking-wide transition-colors"
+                >
+                  Back to home
+                </Link>
+              </div>
+            </div>
+          </Container>
+        </section>
+      </>
     );
   }
 
   if (items.length === 0) {
     return (
-      <Container size="md" className="py-24 text-center">
-        <ShoppingBag className="mx-auto mb-6 h-16 w-16 text-text-secondary/30" />
-        <Typography variant="h2" className="mb-3 italic">
-          Nothing to check out
-        </Typography>
-        <Link
-          href="/products"
-          className="mt-6 inline-flex rounded-full bg-secondary px-8 py-3 font-bold text-white transition-colors hover:bg-primary"
-        >
-          Shop products
-        </Link>
-      </Container>
+      <>
+        <PageHead
+          eyebrow="Checkout"
+          title="Nothing to check out"
+          meta={<CheckoutSteps current="details" />}
+        />
+        <section className="py-16 lg:py-24">
+          <Container>
+            <div className="border-border/70 mx-auto flex max-w-lg flex-col items-center gap-4 rounded-2xl border border-dashed px-6 py-16 text-center">
+              <ShoppingBag className="text-text-secondary/30 h-12 w-12" />
+              <Typography variant="body" className="text-text-primary">
+                Your cart is empty, so there is nothing to pay for yet.
+              </Typography>
+              <Link
+                href="/products"
+                className="bg-primary hover:bg-primary/85 mt-2 inline-flex items-center justify-center rounded-full px-6 py-3 text-xs font-bold tracking-wide text-white transition-all active:scale-[0.98]"
+              >
+                Browse the shop
+              </Link>
+            </div>
+          </Container>
+        </section>
+      </>
     );
   }
 
   return (
-    <Container size="md" className="py-16">
-      <Typography variant="h1" className="mb-8 italic">
-        Checkout
-      </Typography>
+    <>
+      <PageHead
+        eyebrow="Almost there"
+        title="Checkout"
+        meta={<CheckoutSteps current="details" />}
+      />
 
-      <div className="grid grid-cols-1 gap-10 lg:grid-cols-5">
+      <section className="py-10 lg:py-16">
+        <Container size="lg">
+          <div className="grid grid-cols-1 gap-10 lg:grid-cols-5 lg:gap-12">
         {/* Form */}
         <form onSubmit={handleSubmit} noValidate className="space-y-5 lg:col-span-3">
           <div>
-            <Typography variant="label" className="mb-3 block tracking-widest text-secondary">
+            <Typography variant="label" className="mb-3 block tracking-widest text-primary">
               Delivery details
             </Typography>
             <div className="space-y-4">
@@ -285,7 +337,7 @@ export function CheckoutClient({ currency }: CheckoutClientProps) {
                   placeholder="Jane Doe"
                 />
                 {showError("name") && (
-                  <p className="mt-1 text-xs font-medium text-red-500">{errors.name}</p>
+                  <p className="mt-1 text-xs font-medium text-destructive">{errors.name}</p>
                 )}
               </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -304,7 +356,7 @@ export function CheckoutClient({ currency }: CheckoutClientProps) {
                     placeholder="98XXXXXXXX"
                   />
                   {showError("phone") && (
-                    <p className="mt-1 text-xs font-medium text-red-500">{errors.phone}</p>
+                    <p className="mt-1 text-xs font-medium text-destructive">{errors.phone}</p>
                   )}
                 </div>
                 <div>
@@ -317,7 +369,7 @@ export function CheckoutClient({ currency }: CheckoutClientProps) {
                     value={phone2}
                     onChange={(e) => setPhone2(e.target.value)}
                     autoComplete="tel"
-                    className="w-full rounded-xl border border-border/50 bg-background/60 px-4 py-3 text-text-primary focus:border-secondary focus:outline-none"
+                    className="w-full rounded-xl border border-border bg-background px-4 py-3 text-text-primary focus:border-primary focus:outline-none"
                     placeholder="Optional"
                   />
                 </div>
@@ -336,17 +388,17 @@ export function CheckoutClient({ currency }: CheckoutClientProps) {
                   placeholder="Street, city, landmark"
                 />
                 {showError("address") && (
-                  <p className="mt-1 text-xs font-medium text-red-500">{errors.address}</p>
+                  <p className="mt-1 text-xs font-medium text-destructive">{errors.address}</p>
                 )}
               </div>
               <div>
                 <label className="mb-1.5 block text-sm font-semibold text-text-primary">
-                  Notes <span className="font-normal text-text-secondary">(optional)</span>
+                  Notes <span className="font-normal text-text-primary">(optional)</span>
                 </label>
                 <input
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="w-full rounded-xl border border-border/50 bg-background/60 px-4 py-3 text-text-primary focus:border-secondary focus:outline-none"
+                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-text-primary focus:border-primary focus:outline-none"
                   placeholder="Landmark, delivery time, anything we should know"
                 />
               </div>
@@ -355,15 +407,15 @@ export function CheckoutClient({ currency }: CheckoutClientProps) {
 
           {/* Payment method */}
           <fieldset className="pt-1">
-            <legend className="mb-3 block text-xs font-semibold uppercase tracking-widest text-secondary">
+            <legend className="mb-3 block text-xs font-semibold uppercase tracking-widest text-primary">
               Payment method
             </legend>
             <div className="space-y-2">
               <label
                 className={`flex cursor-pointer items-start gap-3 rounded-xl border px-4 py-3 transition-colors ${
                   paymentMethod === "cod"
-                    ? "border-secondary bg-secondary/5"
-                    : "border-border/50 bg-background/60 hover:border-secondary/40"
+                    ? "border-primary bg-primary/5"
+                    : "border-border bg-background hover:border-primary/40"
                 }`}
               >
                 <input
@@ -372,25 +424,26 @@ export function CheckoutClient({ currency }: CheckoutClientProps) {
                   value="cod"
                   checked={paymentMethod === "cod"}
                   onChange={() => setPaymentMethod("cod")}
-                  className="mt-0.5 accent-secondary"
+                  className="mt-0.5 accent-primary"
                 />
                 <span className="flex items-start gap-2.5">
-                  <Banknote className="mt-0.5 h-5 w-5 shrink-0 text-secondary" />
+                  <Banknote className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
                   <span>
                     <span className="block text-sm font-semibold text-text-primary">
                       Cash on delivery
                     </span>
-                    <span className="block text-xs text-text-secondary">
+                    <span className="block text-xs text-text-primary">
                       Pay with cash when your order arrives.
                     </span>
                   </span>
                 </span>
               </label>
+              {/* eSewa disabled - see the note on PaymentMethod above.
               <label
                 className={`flex cursor-pointer items-start gap-3 rounded-xl border px-4 py-3 transition-colors ${
                   paymentMethod === "esewa"
-                    ? "border-secondary bg-secondary/5"
-                    : "border-border/50 bg-background/60 hover:border-secondary/40"
+                    ? "border-primary bg-primary/5"
+                    : "border-border bg-background hover:border-primary/40"
                 }`}
               >
                 <input
@@ -399,31 +452,35 @@ export function CheckoutClient({ currency }: CheckoutClientProps) {
                   value="esewa"
                   checked={paymentMethod === "esewa"}
                   onChange={() => setPaymentMethod("esewa")}
-                  className="mt-0.5 accent-secondary"
+                  className="mt-0.5 accent-primary"
                 />
                 <span className="flex items-start gap-2.5">
-                  <Wallet className="mt-0.5 h-5 w-5 shrink-0 text-secondary" />
+                  <Wallet className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
                   <span>
                     <span className="block text-sm font-semibold text-text-primary">
                       Pay online with eSewa
                     </span>
-                    <span className="block text-xs text-text-secondary">
+                    <span className="block text-xs text-text-primary">
                       Secure online payment, confirmed instantly.
                     </span>
                   </span>
                 </span>
               </label>
+              */}
             </div>
           </fieldset>
 
-          {paymentMethod === "cod" ? (
-            <button
-              type="submit"
-              disabled={pending}
-              className="w-full rounded-full bg-secondary px-8 py-3.5 font-bold text-white shadow-lg transition-colors hover:bg-primary disabled:opacity-50"
-            >
-              {pending ? "Placing order…" : "Place order"}
-            </button>
+          {/* eSewa disabled, so cash on delivery is the only path to a placed
+              order and this is no longer a choice between two buttons. Restore
+              the ternary along with the radio above. */}
+          <button
+            type="submit"
+            disabled={pending}
+            className="bg-primary hover:bg-primary/85 w-full cursor-pointer rounded-full px-8 py-3.5 text-xs font-bold tracking-wide text-white transition-all active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50"
+          >
+            {pending ? "Placing order…" : "Place order"}
+          </button>
+          {/*
           ) : (
             <EsewaPaymentButton
               getInput={buildCheckoutInput}
@@ -431,16 +488,17 @@ export function CheckoutClient({ currency }: CheckoutClientProps) {
               disabled={pending}
             />
           )}
+          */}
         </form>
 
         {/* Summary */}
         <div className="lg:col-span-2">
-          <div className="rounded-2xl border border-border/30 bg-surface/50 p-5 lg:sticky lg:top-24">
+          <div className="rounded-2xl border border-border/70 bg-surface p-5 lg:sticky lg:top-28">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="font-bold text-text-primary">Order summary</h2>
               <Link
                 href="/cart"
-                className="inline-flex items-center gap-1 text-xs font-semibold text-secondary transition-colors hover:text-primary"
+                className="inline-flex items-center gap-1 text-xs font-semibold text-primary transition-colors hover:text-primary"
               >
                 <Pencil className="h-3 w-3" /> Edit cart
               </Link>
@@ -467,15 +525,15 @@ export function CheckoutClient({ currency }: CheckoutClientProps) {
                         {item.title}
                       </p>
                       {item.variantLabel && (
-                        <p className="truncate text-xs text-text-secondary">{item.variantLabel}</p>
+                        <p className="truncate text-xs text-text-primary">{item.variantLabel}</p>
                       )}
                       <div className="mt-1.5 flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-1 rounded-full border border-border/50 bg-background/60">
+                        <div className="flex items-center gap-1 rounded-full border border-border bg-background">
                           <button
                             type="button"
                             onClick={() => updateQuantity(key, item.quantity - 1)}
                             aria-label="Decrease quantity"
-                            className="flex h-6 w-6 items-center justify-center rounded-full text-text-secondary transition-colors hover:text-secondary"
+                            className="flex h-6 w-6 items-center justify-center rounded-full text-text-primary transition-colors hover:text-primary"
                           >
                             <Minus className="h-3 w-3" />
                           </button>
@@ -487,7 +545,7 @@ export function CheckoutClient({ currency }: CheckoutClientProps) {
                             onClick={() => updateQuantity(key, item.quantity + 1)}
                             disabled={atMax}
                             aria-label="Increase quantity"
-                            className="flex h-6 w-6 items-center justify-center rounded-full text-text-secondary transition-colors hover:text-secondary disabled:cursor-not-allowed disabled:opacity-30"
+                            className="flex h-6 w-6 items-center justify-center rounded-full text-text-secondary transition-colors hover:text-primary disabled:cursor-not-allowed disabled:opacity-30"
                           >
                             <Plus className="h-3 w-3" />
                           </button>
@@ -501,7 +559,7 @@ export function CheckoutClient({ currency }: CheckoutClientProps) {
                       type="button"
                       onClick={() => removeItem(key)}
                       aria-label={`Remove ${item.title}`}
-                      className="self-start text-text-secondary/40 transition-colors hover:text-red-400"
+                      className="text-text-secondary/50 hover:bg-background hover:text-destructive flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center self-start rounded-full transition-colors"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -509,21 +567,26 @@ export function CheckoutClient({ currency }: CheckoutClientProps) {
                 );
               })}
             </ul>
-            <div className="mt-4 flex justify-between border-t border-border/30 pt-4 text-base font-extrabold text-text-primary">
+            <div className="mt-4 flex justify-between border-t border-border/70 pt-4 text-base font-extrabold text-text-primary">
               <span>Subtotal</span>
               <span>{money(subtotal)}</span>
             </div>
-            <p className="mt-2 text-xs text-text-secondary">
+            <p className="mt-2 text-xs text-text-primary">
+              {/* eSewa disabled - see the note on PaymentMethod above.
               {paymentMethod === "esewa"
                 ? "Pay securely online with eSewa. Courier charges are confirmed when your order ships."
-                : "Pay on delivery. Courier charges are confirmed when your order ships."}
+                : */}
+              Pay on delivery. Courier charges are confirmed when your order
+              ships.
             </p>
             <p className="mt-3 inline-flex items-center gap-1.5 text-xs text-text-secondary/80">
-              <ShieldCheck className="h-3.5 w-3.5 text-secondary" /> Your details are kept private and secure.
+              <ShieldCheck className="h-3.5 w-3.5 text-primary" /> Your details are kept private and secure.
             </p>
           </div>
         </div>
-      </div>
-    </Container>
+          </div>
+        </Container>
+      </section>
+    </>
   );
 }
