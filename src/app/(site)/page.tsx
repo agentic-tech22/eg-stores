@@ -38,7 +38,10 @@ const siteDescription =
   "Mobile accessories and everyday gadgets in Nepal: earbuds, headphones, speakers, chargers, powerbanks, watches and more. Pay with eSewa or cash on delivery, delivered nationwide.";
 
 export const metadata: Metadata = {
-  title: siteTitle,
+  // `absolute` because the root template appends the shop name, and the home
+  // page's own title IS the shop name: left to the template it read
+  // "EG Stores · EG Stores".
+  title: { absolute: siteTitle },
   description: siteDescription,
   openGraph: {
     title: siteTitle,

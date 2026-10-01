@@ -49,9 +49,14 @@ export const metadata: Metadata = {
   title: { default: "EG Stores", template: "%s · EG Stores" },
   description: "EG Stores: point of sale, inventory, staff and storefront for the whole shop, in one place.",
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
+  // Two sizes, because the logo is a badge with "EG STORE" set across it: at
+  // 16-32px that wordmark is an unreadable smudge, so the tab gets the mark
+  // alone and the 180px touch icon gets the whole lockup.
   icons: {
-    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
-    apple: [{ url: "/favicon.svg" }],
+    icon: [{ url: "/assets/images/eg-store-icon.svg", type: "image/svg+xml" }],
+    apple: [
+      { url: "/assets/images/eg-store-apple-touch.png", sizes: "180x180" },
+    ],
   },
   openGraph: {
     type: "website",

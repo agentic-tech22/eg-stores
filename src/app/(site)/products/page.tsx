@@ -12,12 +12,12 @@ const siteTitle = siteConfig.defaultSiteName;
 const description = "Browse every phone and accessory we have in stock.";
 
 export const metadata: Metadata = {
-  title: `Products | ${siteTitle}`,
+  title: "Products",
   description,
-  openGraph: { title: `Products | ${siteTitle}`, description },
+  openGraph: { title: `Products · ${siteTitle}`, description },
   twitter: {
     card: "summary_large_image",
-    title: `Products | ${siteTitle}`,
+    title: `Products · ${siteTitle}`,
     description,
   },
 };

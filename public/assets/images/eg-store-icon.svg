@@ -1,0 +1,16 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="EG Store">
+  <!--
+    Tab icon for the storefront.
+
+    The shop's logo is a badge with "EG STORE" set across it, and at 16-32px
+    that wordmark is an unreadable smudge, so this is the mark on its own:
+    the same circular badge and the same monochrome palette, carrying only the
+    two letters that survive at that size. The full lockup is used for the
+    180px touch icon, where it does read.
+  -->
+  <circle cx="32" cy="32" r="32" fill="#0b0d13"/>
+  <circle cx="32" cy="32" r="27" stroke="#ffffff" stroke-width="3.5"/>
+  <text x="32" y="41.5" text-anchor="middle"
+        font-family="'Outfit','Segoe UI',Roboto,system-ui,-apple-system,sans-serif"
+        font-size="25" font-weight="800" letter-spacing="-1.2" fill="#ffffff">EG</text>
+</svg>

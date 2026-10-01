@@ -50,7 +50,7 @@ const navLinks = [
 ];
 
 export const metadata: Metadata = {
-  title: `${siteTitle} Platform`,
+  title: "Platform",
   description: siteDescription,
   openGraph: { title: siteTitle, description: siteDescription, type: "website" },
   twitter: { card: "summary_large_image", title: siteTitle, description: siteDescription },

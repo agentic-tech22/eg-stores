@@ -1,14 +1,11 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { SiteShell } from "@/components/organisms/site-shell";
-import { siteConfig } from "@/config/site";
 import { getActiveCurrency } from "@/lib/currency.server";
 import { CheckoutClient } from "./CheckoutClient";
 
-const siteTitle = siteConfig.defaultSiteName;
-
 export const metadata: Metadata = {
-  title: `Checkout | ${siteTitle}`,
+  title: "Checkout",
   description: "Complete your order.",
 };
 

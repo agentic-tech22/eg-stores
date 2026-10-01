@@ -25,19 +25,22 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { id } = await params;
   const product = await fetchProductById(id);
   if (!product) return { title: "Product Not Found" };
-  const title = `${product.title} | ${siteTitle}`;
+  // The tab title is the product alone; the root template adds the shop
+  // name. Social cards get it spelled out, because they travel without it.
+  const title = product.title;
+  const sharedTitle = `${product.title} · ${siteTitle}`;
   const description = product.description ?? `${product.title} available at ${siteTitle}`;
   return {
     title,
     description,
     openGraph: {
-      title,
+      title: sharedTitle,
       description,
       images: product.imageUrl ? [{ url: product.imageUrl, width: 800, height: 1000, alt: product.title }] : undefined,
     },
     twitter: {
       card: "summary_large_image",
-      title,
+      title: sharedTitle,
       description,
       images: product.imageUrl ? [product.imageUrl] : undefined,
     },
