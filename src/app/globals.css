@@ -93,6 +93,34 @@
   --admin-sidebar-danger: #f87171;
 }
 
+/* ===== EG Stores storefront chrome =====
+   The shop's own dark set: the header, the footer and the /products filter rail.
+
+   These are deliberately a SEPARATE palette from `--admin-sidebar-*` even
+   though they start on the same near-black. The two rails answer to different
+   owners — the dashboard rail belongs to the operator and must never move when
+   a shopkeeper re-skins their storefront from Supabase, and the shop's chrome
+   must never move when we retune the dashboard. Pointing one at the other
+   would couple them and the first retune of either would silently repaint the
+   other. Same colour, two switches.
+
+   Like the dashboard rail this set is self-contained: on near-black the
+   storefront's `--theme-text-*` tones are near-white paper, so anything
+   rendered on the ink uses a `--shop-ink-*` token, never a `--theme-*` one. */
+:root {
+  --shop-ink: #0b0d13; /* header bar, footer, filter rail */
+  --shop-ink-deep: #06070b; /* the utility strip above the header */
+  --shop-ink-raised: #161a24; /* cards and inputs sitting on the ink */
+  --shop-ink-border: #1e2230;
+  --shop-ink-hover: rgba(255, 255, 255, 0.055);
+  --shop-ink-text: #98a1b5;
+  --shop-ink-text-active: #ffffff;
+  --shop-ink-muted: #666f80; /* section labels, fine print */
+  /* Lighter than --theme-secondary, which is mixed for white and goes muddy
+     against near-black. */
+  --shop-ink-accent: #8b7bff;
+}
+
 /* Dynamic font family: switches --font-sans based on --theme-font-family */
 :root[style*="--theme-font-family: Inter"],
 :root [style*="--theme-font-family: Inter"] {
@@ -132,6 +160,9 @@
   --color-surface: var(--theme-surface);
   --color-text-primary: var(--theme-text-primary);
   --color-text-secondary: var(--theme-text-secondary);
+  /* --theme-text-muted existed but was never exposed to Tailwind, so every
+     `text-text-muted` in the codebase silently resolved to nothing. */
+  --color-text-muted: var(--theme-text-muted);
   --color-accent: var(--theme-accent);
 
   /* Derived tokens */
@@ -195,6 +226,18 @@
   --color-admin-sidebar-accent: var(--admin-sidebar-accent);
   --color-admin-sidebar-danger: var(--admin-sidebar-danger);
 
+  /* Storefront chrome (dark header/footer/filter rail — see the palette note
+     at the top of the file) */
+  --color-shop-ink: var(--shop-ink);
+  --color-shop-ink-deep: var(--shop-ink-deep);
+  --color-shop-ink-raised: var(--shop-ink-raised);
+  --color-shop-ink-border: var(--shop-ink-border);
+  --color-shop-ink-hover: var(--shop-ink-hover);
+  --color-shop-ink-text: var(--shop-ink-text);
+  --color-shop-ink-text-active: var(--shop-ink-text-active);
+  --color-shop-ink-muted: var(--shop-ink-muted);
+  --color-shop-ink-accent: var(--shop-ink-accent);
+
   /* Radius */
   --radius-sm: calc(var(--radius) - 2px);
   --radius-md: var(--radius);
@@ -218,6 +261,14 @@
   --animate-marquee: marquee 32s linear infinite;
   --animate-shimmer: shimmer 2.5s linear infinite;
   --animate-spin-slow: spin 26s linear infinite;
+
+  /* Storefront motion. Short and small on purpose: a shop page is read, not
+     watched, so these nudge attention rather than perform. Every one of them
+     is neutralised by the `prefers-reduced-motion` block further down. */
+  --animate-ken-burns: ken-burns 24s ease-in-out infinite alternate;
+  --animate-rise: rise 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-pop: pop 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  --animate-sweep: sweep 1.1s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 @keyframes enter {
@@ -311,6 +362,52 @@
   }
   to {
     background-position: 200% 0;
+  }
+}
+
+/* Hero cover: a very slow push-in so a still photograph does not sit dead on
+   the page. Deliberately under 6% of travel — any more and text sitting over it
+   appears to drift. */
+@keyframes ken-burns {
+  from {
+    transform: scale(1.04) translate3d(0, 0, 0);
+  }
+  to {
+    transform: scale(1.1) translate3d(-1.5%, -1.5%, 0);
+  }
+}
+
+/* One-shot entrances, used for above-the-fold content that ScrollReveal cannot
+   cover because it is already in view on first paint. */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Draws a nav underline / section rule out from its origin. */
+@keyframes sweep {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
   }
 }
 
@@ -408,10 +505,41 @@ body:has(.admin-root) {
   }
 }
 
-/* The navigation rail is near-black, so the app-wide gray thumb disappears on
-   it. Scoped to the rail alone — the light working area keeps the default. */
+/* Near-black rails — the dashboard navigation rail and the storefront product
+   filter rail — swallow the app-wide gray thumb, so they opt into a light one.
+   Scoped to those rails alone; every light surface keeps the default. */
 .sidebar-scroll {
   scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+}
+
+/* Horizontal rails that are dragged/swiped rather than scrolled with a bar —
+   the storefront's category strip. The scrollbar is hidden, never the overflow,
+   so keyboard and trackpad scrolling still work. */
+.scrollbar-hidden {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}
+
+/* The search box renders its own clear button, and WebKit renders a second one
+   inside `input[type="search"]`, so the field ended up showing two crosses.
+   Ours is the one that stays: it inherits the theme, so it is legible on the
+   dark header where the native grey cross is not, and it sits inside the
+   field's padding instead of against its edge.
+
+   `type="search"` itself is kept — it is what gives a phone keyboard its "go"
+   key and the input its role in the accessibility tree.
+
+   `display` rather than the usual `-webkit-appearance: none`: the CSS minifier
+   treats `appearance` as fully standardised and drops the prefixed
+   declaration, but this pseudo-element is WebKit-internal and only obeys the
+   prefixed one. The shipped rule became `appearance: none`, which Chrome
+   ignores here, and the second cross stayed on screen. */
+input[type="search"]::-webkit-search-cancel-button {
+  display: none;
 }
 
 ::selection {

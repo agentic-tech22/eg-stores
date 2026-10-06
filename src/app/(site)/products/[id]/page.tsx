@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { FooterAesthetic } from "@/components/organisms/footer";
-import { NavbarAesthetic } from "@/components/organisms/navbar";
+import { SiteShell } from "@/components/organisms/site-shell";
 import { siteConfig } from "@/config/site";
 import {
   fetchProductById,
@@ -9,14 +8,12 @@ import {
 } from "@/services/product.service";
 import { fetchComboWithItems } from "@/services/combo.service";
 import { getActiveCurrency } from "@/lib/currency.server";
-import type { FooterConfig, NavbarConfig } from "@/types/layout.types";
+import {
+  toPublicCombo,
+  toPublicProductWithVariants,
+} from "@/utils/to-public-product";
 import { ComboDetailClient } from "./ComboDetailClient";
 import { ProductDetailClient } from "./ProductDetailClient";
-
-const navLinks = [
-  { label: "Home", href: "/" },
-  { label: "Products", href: "/products" },
-];
 
 const siteTitle = siteConfig.defaultSiteName;
 
@@ -28,19 +25,22 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { id } = await params;
   const product = await fetchProductById(id);
   if (!product) return { title: "Product Not Found" };
-  const title = `${product.title} | ${siteTitle}`;
+  // The tab title is the product alone; the root template adds the shop
+  // name. Social cards get it spelled out, because they travel without it.
+  const title = product.title;
+  const sharedTitle = `${product.title} · ${siteTitle}`;
   const description = product.description ?? `${product.title} available at ${siteTitle}`;
   return {
     title,
     description,
     openGraph: {
-      title,
+      title: sharedTitle,
       description,
       images: product.imageUrl ? [{ url: product.imageUrl, width: 800, height: 1000, alt: product.title }] : undefined,
     },
     twitter: {
       card: "summary_large_image",
-      title,
+      title: sharedTitle,
       description,
       images: product.imageUrl ? [product.imageUrl] : undefined,
     },
@@ -57,35 +57,25 @@ export default async function ProductDetailPage({ params }: PageProps) {
 
   const currency = await getActiveCurrency();
 
-  const navbarConfig: NavbarConfig = {
-    siteName: siteTitle,
-    links: navLinks,
-    ctaText: "Shop Now",
-    ctaHref: "/checkout",
-  };
-
-  const footerConfig: FooterConfig = {
-    siteName: siteTitle,
-    description: siteConfig.defaultDescription,
-    links: [{ group: "Navigate", items: navLinks }],
-  };
-
+  // Both detail views are client components, so cost is stripped before the
+  // product crosses the boundary and lands in the page payload.
   let content;
   if (base.isCombo) {
     const combo = await fetchComboWithItems(id);
     if (!combo) notFound();
-    content = <ComboDetailClient combo={combo} currency={currency} />;
+    content = (
+      <ComboDetailClient combo={toPublicCombo(combo)} currency={currency} />
+    );
   } else {
     const product = await fetchProductWithVariants(id);
     if (!product) notFound();
-    content = <ProductDetailClient product={product} currency={currency} />;
+    content = (
+      <ProductDetailClient
+        product={toPublicProductWithVariants(product)}
+        currency={currency}
+      />
+    );
   }
 
-  return (
-    <>
-      <NavbarAesthetic config={navbarConfig} />
-      <main className="flex-1">{content}</main>
-      <FooterAesthetic config={footerConfig} />
-    </>
-  );
+  return <SiteShell>{content}</SiteShell>;
 }

@@ -217,16 +217,14 @@ function getActiveHref(pathname: string, links: NavLink[]): string | null {
 
 function SidebarLogo() {
   return (
-    <div className="flex items-center gap-3 px-5 py-6">
-      <BrandMark className="h-10 w-10 text-[13px]" />
-      <div className="leading-tight">
-        <span className="font-heading text-lg font-bold tracking-tight text-white">
-          EG Stores
-        </span>
-        <p className="text-admin-sidebar-muted text-[10px] font-bold tracking-[0.18em] uppercase">
-          Point of Sale
-        </p>
-      </div>
+    <div className="flex flex-col gap-2 px-5 py-6">
+      {/* The badge already reads "EG STORE", so the wordmark that used to sit
+          beside it was the same words twice. "Point of Sale" stays: it names
+          the product rather than the brand. */}
+      <BrandMark className="h-10 w-auto self-start" />
+      <p className="text-admin-sidebar-muted text-[10px] font-bold tracking-[0.18em] uppercase">
+        Point of Sale
+      </p>
     </div>
   );
 }

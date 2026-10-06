@@ -8,12 +8,12 @@ import { Container } from "@/components/atoms/container/Container";
 import { Typography } from "@/components/atoms/typography";
 import { useCart } from "@/components/cart/cart-context";
 import { notify } from "@/lib/toast";
-import type { ComboWithItems } from "@/types/product.types";
+import type { PublicComboWithItems } from "@/types/product.types";
 import { cn } from "@/utils/cn";
 import { formatCurrency } from "@/utils/format-currency";
 
 interface ComboDetailClientProps {
-  combo: ComboWithItems;
+  combo: PublicComboWithItems;
   currency: { code: string; locale: string };
 }
 
