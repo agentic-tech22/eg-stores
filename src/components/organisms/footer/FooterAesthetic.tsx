@@ -12,7 +12,8 @@ interface FooterAestheticProps {
 }
 
 /**
- * Site footer, on the same ink as the header.
+ * Site footer, on a gradient of the deep brand reds that also run the header's
+ * utility strip, so the page is bracketed top and bottom in the brand.
  *
  * It used to be one centered column: logo, a paragraph, and every link in the
  * site flattened into a single wrapping row. That looked considered and worked
@@ -25,7 +26,12 @@ export function FooterAesthetic({ config, className }: FooterAestheticProps) {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className={cn("bg-shop-ink mt-auto", className)}>
+    <footer
+      className={cn(
+        "from-shop-brand-deep to-shop-brand-deepest mt-auto bg-linear-to-b text-white",
+        className,
+      )}
+    >
       <Container>
         <div className="grid gap-10 py-14 md:grid-cols-[1.4fr_1fr_1fr] lg:gap-16 lg:py-16">
           {/* Identity */}
@@ -42,14 +48,14 @@ export function FooterAesthetic({ config, className }: FooterAestheticProps) {
                 )}
               />
             ) : (
-              <span className="font-heading text-shop-ink-text-active text-2xl font-bold tracking-tight">
+              <span className="font-heading text-2xl font-extrabold tracking-tight text-white uppercase">
                 {config.siteName}
               </span>
             )}
 
             <Typography
               variant="bodySmall"
-              className="text-shop-ink-text max-w-sm leading-relaxed"
+              className="max-w-sm leading-relaxed text-white/75"
             >
               {config.description}
             </Typography>
@@ -57,9 +63,9 @@ export function FooterAesthetic({ config, className }: FooterAestheticProps) {
             <div className="mt-2 flex flex-col gap-2">
               <a
                 href={`tel:${SUPPORT_WHATSAPP_TEL}`}
-                className="text-shop-ink-text hover:text-shop-ink-text-active group inline-flex items-center gap-2.5 text-sm transition-colors"
+                className="group inline-flex items-center gap-2.5 text-sm text-white/80 transition-colors hover:text-white"
               >
-                <span className="bg-shop-ink-raised text-shop-ink-accent group-hover:bg-shop-ink-accent inline-flex h-8 w-8 items-center justify-center rounded-full transition-colors group-hover:text-white">
+                <span className="group-hover:text-shop-brand-deep inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white transition-colors group-hover:bg-white">
                   <svg
                     className="h-4 w-4"
                     fill="none"
@@ -82,9 +88,9 @@ export function FooterAesthetic({ config, className }: FooterAestheticProps) {
                 href={SUPPORT_WHATSAPP_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-shop-ink-text hover:text-shop-ink-text-active group inline-flex items-center gap-2.5 text-sm transition-colors"
+                className="group inline-flex items-center gap-2.5 text-sm text-white/80 transition-colors hover:text-white"
               >
-                <span className="bg-shop-ink-raised text-shop-ink-accent group-hover:bg-shop-ink-accent inline-flex h-8 w-8 items-center justify-center rounded-full transition-colors group-hover:text-white">
+                <span className="group-hover:text-shop-brand-deep inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white transition-colors group-hover:bg-white">
                   <svg
                     className="h-4 w-4"
                     fill="none"
@@ -108,14 +114,15 @@ export function FooterAesthetic({ config, className }: FooterAestheticProps) {
           {/* Link groups, kept as the groups the config declares. */}
           {config.links.map((group) => (
             <nav key={group.group} aria-label={group.group}>
-              <p className="text-shop-ink-muted mb-4 text-[10px] font-bold tracking-[0.2em] uppercase">
+              {/* Short rule under each heading, as a quiet column marker. */}
+              <p className="font-heading mb-5 text-lg font-semibold text-white after:mt-2 after:block after:h-0.5 after:w-8 after:bg-white/50">
                 {group.group}
               </p>
               <ul className="flex flex-col gap-3">
                 {group.items.map((item) => {
                   const external = item.href.startsWith("http");
                   const classes =
-                    "text-shop-ink-text hover:text-shop-ink-text-active inline-block text-sm transition-all duration-200 hover:translate-x-0.5";
+                    "inline-block text-sm text-white/80 transition-all duration-200 hover:translate-x-0.5 hover:text-white";
                   return (
                     <li key={item.href}>
                       {external ? (
@@ -140,18 +147,18 @@ export function FooterAesthetic({ config, className }: FooterAestheticProps) {
           ))}
         </div>
 
-        <div className="border-shop-ink-border flex flex-col items-center justify-between gap-3 border-t py-6 sm:flex-row">
+        <div className="flex flex-col items-center justify-between gap-3 border-t border-white/15 py-6 sm:flex-row">
           <Typography
             as="span"
             variant="caption"
-            className="text-shop-ink-muted"
+            className="text-sm text-white/70"
           >
             © {currentYear} {config.siteName}. All rights reserved.
           </Typography>
           <Typography
             as="span"
             variant="caption"
-            className="text-shop-ink-muted"
+            className="text-sm text-white/70"
           >
             eSewa · Fonepay · Cash on delivery
           </Typography>

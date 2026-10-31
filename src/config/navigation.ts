@@ -29,20 +29,22 @@ export const SITE_NAV_LINKS = [
 ] as const;
 
 /**
- * The shop mark, drawn white on transparent so it sits on the ink header
- * and footer. Derived from the supplied artwork, which is black on an
- * opaque white background and would otherwise show as a white tile; see
- * the note beside the file in public/assets/images.
+ * The shop mark, in two inks. The header is white, so it takes the dark-on-
+ * transparent mark; the footer sits on the deep brand red and takes the white
+ * one. Both are derived from the supplied artwork, which is black on an opaque
+ * white background and would otherwise show as a white tile; see the note
+ * beside the files in public/assets/images.
  */
-const SITE_LOGO = "/assets/images/eg-store-logo-on-dark.png";
+const SITE_LOGO_ON_LIGHT = "/assets/images/eg-store-logo-on-light.png";
+const SITE_LOGO_ON_DARK = "/assets/images/eg-store-logo-on-dark.png";
 
 /** Header config shared by every public page. */
 export const siteNavbarConfig: NavbarConfig = {
   siteName: siteConfig.defaultSiteName,
-  logoUrl: SITE_LOGO,
+  logoUrl: SITE_LOGO_ON_LIGHT,
   logoOrientation: "square",
   links: [...SITE_NAV_LINKS],
-  ctaText: "Shop now",
+  ctaText: "Shop all",
   ctaHref: "/products",
   showCart: true,
 };
@@ -50,7 +52,7 @@ export const siteNavbarConfig: NavbarConfig = {
 /** Footer config shared by every public page. */
 export const siteFooterConfig: FooterConfig = {
   siteName: siteConfig.defaultSiteName,
-  logoUrl: SITE_LOGO,
+  logoUrl: SITE_LOGO_ON_DARK,
   logoOrientation: "square",
   description: siteConfig.defaultDescription,
   links: [

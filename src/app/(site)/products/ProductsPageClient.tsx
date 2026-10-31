@@ -6,8 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { Container } from "@/components/atoms/container/Container";
 import { Typography } from "@/components/atoms/typography";
 import { ProductCard } from "@/components/molecules/product-card/ProductCard";
-import { SearchField } from "@/components/molecules/search-field/SearchField";
-import { PageHead } from "@/components/sections/page-head/PageHead";
+import { SectionTitle } from "@/components/molecules/section-title/SectionTitle";
 import {
   ProductFilters,
   emptyFilters,
@@ -42,13 +41,13 @@ interface ProductsPageClientProps {
 /** A removable token for one active filter. */
 function Chip({ label, onClear }: { label: string; onClear: () => void }) {
   return (
-    <span className="border-border bg-surface text-text-primary inline-flex items-center gap-1.5 rounded-full border py-1.5 pr-1.5 pl-3.5 text-xs font-semibold">
+    <span className="bg-primary-soft text-primary inline-flex items-center gap-1.5 rounded-md py-1.5 pr-1.5 pl-3 text-xs font-semibold">
       {label}
       <button
         type="button"
         onClick={onClear}
         aria-label={`Remove filter ${label}`}
-        className="text-text-secondary hover:bg-border hover:text-text-primary inline-flex h-5 w-5 cursor-pointer items-center justify-center rounded-full transition-colors"
+        className="text-primary hover:bg-primary inline-flex h-5 w-5 cursor-pointer items-center justify-center rounded transition-colors hover:text-white"
       >
         <X className="h-3 w-3" />
       </button>
@@ -166,6 +165,10 @@ export function ProductsPageClient({
     ? (categoryNameById.get(category) ?? null)
     : null;
 
+  const pageTitle =
+    activeCategoryName ??
+    (search.trim() ? `Results for "${search.trim()}"` : "All products");
+
   function handleFiltersChange(next: ProductFilterState) {
     if (next.category !== category) {
       setParams({ [CATEGORY_PARAM]: next.category });
@@ -192,25 +195,26 @@ export function ProductsPageClient({
 
   return (
     <>
-      {/* Search sits in the page that holds the results, rather than in the
-          header on every page of the site. */}
-      <PageHead
-        eyebrow="The shop"
-        title="All products"
-        meta={
-          <div className="w-full sm:w-80">
-            <SearchField tone="light" placeholder="Search the shop..." />
-          </div>
-        }
-      />
-
-      <section className="py-8 lg:py-12">
+      {/* Named for what is on screen: the category when one is picked, the
+          search when there is one, the whole shop otherwise. Search itself
+          lives in the header, which submits here with ?q=. */}
+      <section className="pt-10 pb-2 lg:pt-14">
         <Container>
-          <div className="flex gap-8">
+          <SectionTitle
+            as="h1"
+            title={pageTitle}
+            className="mb-0 lg:mb-0"
+          />
+        </Container>
+      </section>
+
+      <section className="pt-8 pb-14 lg:pt-10 lg:pb-20">
+        <Container>
+          <div className="flex gap-8 xl:gap-10">
             {/* Desktop rail. Sticky so the filters stay reachable however far
                 down the grid the shopper has scrolled. */}
-            <aside className="hidden w-60 shrink-0 lg:block">
-              <div className="bg-shop-ink sidebar-scroll sticky top-28 max-h-[calc(100vh-8rem)] overflow-y-auto rounded-2xl p-5">
+            <aside className="hidden w-64 shrink-0 lg:block xl:w-72">
+              <div className="sticky top-32 max-h-[calc(100vh-9rem)] overflow-y-auto pr-2">
                 {filterPanel}
               </div>
             </aside>
@@ -223,7 +227,7 @@ export function ProductsPageClient({
                     <button
                       type="button"
                       onClick={() => setDrawerOpen(true)}
-                      className="border-border text-text-primary hover:border-primary hover:text-primary inline-flex cursor-pointer items-center gap-2 rounded-full border px-4 py-2 text-xs font-bold transition-colors lg:hidden"
+                      className="border-border text-text-primary hover:border-primary hover:text-primary inline-flex cursor-pointer items-center gap-2 rounded-md border px-4 py-2 text-xs font-bold tracking-wide uppercase transition-colors lg:hidden"
                     >
                       <SlidersHorizontal className="h-4 w-4" />
                       Filters
@@ -232,17 +236,15 @@ export function ProductsPageClient({
                       )}
                     </button>
 
-                    <Typography
-                      variant="bodySmall"
-                      className="text-text-secondary"
-                    >
-                      Showing {filtered.length} of {sellable.length}
-                    </Typography>
+                    <p className="text-text-primary text-sm font-semibold">
+                      Showing {filtered.length}{" "}
+                      {filtered.length === 1 ? "result" : "results"}
+                    </p>
                   </div>
 
                   <label className="flex shrink-0 items-center gap-2">
-                    <span className="text-text-secondary text-xs font-medium">
-                      Sort
+                    <span className="text-text-primary hidden text-xs font-medium tracking-wide uppercase sm:inline">
+                      Sort by
                     </span>
                     {/* Native arrow suppressed and replaced with our own, the
                         same way the admin Select does it. Left native, the
@@ -256,7 +258,7 @@ export function ProductsPageClient({
                         onChange={(event) =>
                           setSort(event.target.value as SortValue)
                         }
-                        className="border-border bg-background text-text-primary hover:border-primary/50 focus-visible:border-primary focus-visible:ring-primary/20 w-44 cursor-pointer appearance-none rounded-full border py-2 pr-9 pl-4 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                        className="border-border bg-background text-text-primary hover:border-primary/50 focus-visible:border-primary focus-visible:ring-primary/20 w-44 cursor-pointer appearance-none rounded-md border py-2.5 pr-9 pl-3 text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none"
                       >
                         {SORT_OPTIONS.map((option) => (
                           // Explicit colours: the popup is drawn by the OS, and
@@ -308,17 +310,18 @@ export function ProductsPageClient({
               </div>
 
               {filtered.length > 0 ? (
-                <div className="grid grid-cols-2 gap-4 md:grid-cols-3 md:gap-5 xl:grid-cols-4">
+                <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4">
                   {filtered.map((product) => (
                     <ProductCard
                       key={product.id}
                       product={product}
                       currency={currency}
+                      variant="boxed"
                     />
                   ))}
                 </div>
               ) : (
-                <div className="border-border/70 flex flex-col items-center gap-4 rounded-2xl border border-dashed px-6 py-20 text-center">
+                <div className="border-border flex flex-col items-center gap-4 rounded-xl border border-dashed px-6 py-20 text-center">
                   <Typography variant="body" className="text-text-secondary">
                     {search.trim()
                       ? `Nothing matches "${search.trim()}".`
@@ -328,7 +331,7 @@ export function ProductsPageClient({
                     <button
                       type="button"
                       onClick={clearEverything}
-                      className="bg-primary hover:bg-primary/85 cursor-pointer rounded-full px-6 py-2.5 text-xs font-bold text-white transition-colors"
+                      className="bg-primary hover:bg-secondary cursor-pointer rounded-md px-6 py-2.5 text-xs font-bold tracking-wide text-white uppercase transition-colors"
                     >
                       Clear filters
                     </button>
@@ -358,33 +361,33 @@ export function ProductsPageClient({
         />
         <aside
           className={cn(
-            "bg-shop-ink border-shop-ink-border absolute inset-y-0 left-0 flex w-[19rem] max-w-[85vw] flex-col border-r shadow-2xl transition-transform duration-300 ease-out",
+            "bg-background border-border absolute inset-y-0 left-0 flex w-[19rem] max-w-[85vw] flex-col border-r shadow-2xl transition-transform duration-300 ease-out",
             drawerOpen ? "translate-x-0" : "-translate-x-full",
           )}
         >
-          <div className="border-shop-ink-border flex items-center justify-between border-b px-5 py-4">
-            <span className="text-shop-ink-muted text-[10px] font-bold tracking-[0.2em] uppercase">
+          <div className="border-border flex items-center justify-between border-b px-5 py-4">
+            <span className="text-text-muted text-[10px] font-bold tracking-[0.2em] uppercase">
               Refine
             </span>
             <button
               type="button"
               onClick={() => setDrawerOpen(false)}
               aria-label="Close filters"
-              className="text-shop-ink-text hover:bg-shop-ink-hover hover:text-shop-ink-text-active flex h-9 w-9 cursor-pointer items-center justify-center rounded-full transition-colors"
+              className="text-text-primary hover:bg-surface hover:text-primary flex h-9 w-9 cursor-pointer items-center justify-center rounded-full transition-colors"
             >
               <X className="h-5 w-5" />
             </button>
           </div>
 
-          <div className="sidebar-scroll flex-1 overflow-y-auto px-5 py-5">
+          <div className="flex-1 overflow-y-auto px-5 py-5">
             {filterPanel}
           </div>
 
-          <div className="border-shop-ink-border border-t px-5 py-4">
+          <div className="border-border border-t px-5 py-4">
             <button
               type="button"
               onClick={() => setDrawerOpen(false)}
-              className="bg-shop-ink-accent hover:bg-shop-ink-accent/85 w-full cursor-pointer rounded-full px-6 py-3 text-xs font-bold tracking-wide text-white transition-colors"
+              className="bg-primary hover:bg-secondary w-full cursor-pointer rounded-md px-6 py-3 text-xs font-bold tracking-wide text-white uppercase transition-colors"
             >
               Show {filtered.length}{" "}
               {filtered.length === 1 ? "product" : "products"}

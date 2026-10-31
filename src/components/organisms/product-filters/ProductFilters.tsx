@@ -45,17 +45,18 @@ export function isFiltered(
 
 function GroupHeading({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-shop-ink-muted mb-3 text-[10px] font-bold tracking-[0.2em] uppercase">
+    <p className="font-heading text-text-primary mb-3 text-base font-semibold">
       {children}
     </p>
   );
 }
 
 /**
- * One row in the rail. A button rather than a radio input because every option
- * here is single-select and applies immediately — there is no form to submit,
- * so the radio's grouping semantics would buy nothing and its default styling
- * would have to be fought on a near-black ground.
+ * One row in the list: a square box and a label, the way a shop's filter
+ * column is read at a glance. A button rather than a checkbox input because
+ * every option here is single-select and applies immediately — there is no
+ * form to submit, so the input's semantics would buy nothing. `aria-pressed`
+ * carries the state instead.
  */
 function FilterRow({
   label,
@@ -73,25 +74,45 @@ function FilterRow({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={cn(
-        "group flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm transition-colors duration-200",
-        active
-          ? "bg-shop-ink-accent/15 text-shop-ink-text-active font-semibold"
-          : "text-shop-ink-text hover:bg-shop-ink-hover hover:text-shop-ink-text-active",
-      )}
+      className="group focus-visible:ring-ring flex w-full cursor-pointer items-center gap-3 rounded-md py-1.5 text-left text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none"
     >
       <span
         aria-hidden="true"
         className={cn(
-          "h-1.5 w-1.5 shrink-0 rounded-full transition-colors",
+          "flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[4px] border-[1.5px] transition-colors",
           active
-            ? "bg-shop-ink-accent"
-            : "bg-shop-ink-text/30 group-hover:bg-shop-ink-text/60",
+            ? "border-primary bg-primary text-white"
+            : "border-accent/70 group-hover:border-primary bg-background",
         )}
-      />
-      <span className="flex-1 truncate">{label}</span>
+      >
+        {active && (
+          <svg
+            className="h-3 w-3"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={3.5}
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M4.5 12.75l6 6 9-13.5"
+            />
+          </svg>
+        )}
+      </span>
+      <span
+        className={cn(
+          "flex-1 truncate transition-colors",
+          active
+            ? "text-text-primary font-semibold"
+            : "text-text-secondary group-hover:text-text-primary",
+        )}
+      >
+        {label}
+      </span>
       {count !== undefined && (
-        <span className="text-shop-ink-muted shrink-0 text-xs tabular-nums">
+        <span className="text-text-muted shrink-0 text-xs tabular-nums">
           {count}
         </span>
       )}
@@ -100,7 +121,8 @@ function FilterRow({
 }
 
 /**
- * The /products filter rail, on the shop's ink.
+ * The /products filter column: a white panel of ruled groups under a
+ * "Filter by" heading.
  *
  * Two axes, category and price. Availability used to be a third, as an "in
  * stock only" checkbox; the listing now hides sold-out stock outright, so the
@@ -123,26 +145,40 @@ export function ProductFilters({
     formatCurrency(amount, currency.code, currency.locale);
 
   return (
-    <div className={cn("flex flex-col gap-7", className)}>
-      <div className="flex items-center justify-between gap-3">
-        <p className="font-heading text-shop-ink-text-active text-sm font-bold">
-          Filters
+    <div className={cn("flex flex-col", className)}>
+      <div className="border-border flex items-center justify-between gap-3 border-b pb-4">
+        <p className="font-heading text-text-primary text-base font-bold tracking-wide uppercase">
+          Filter by:
         </p>
         {isFiltered(value, range) && (
           <button
             type="button"
             onClick={() => onChange(emptyFilters(range))}
-            className="text-shop-ink-accent hover:text-shop-ink-text-active cursor-pointer text-xs font-semibold transition-colors"
+            className="text-primary hover:text-secondary cursor-pointer text-xs font-semibold underline-offset-4 transition-colors hover:underline"
           >
             Reset
           </button>
         )}
       </div>
 
+      {range && value.price && (
+        <div className="border-border border-b py-6">
+          <GroupHeading>Price</GroupHeading>
+          <RangeSlider
+            min={range.min}
+            max={range.max}
+            step={range.step}
+            value={value.price}
+            onChange={(price) => onChange({ ...value, price })}
+            formatValue={money}
+          />
+        </div>
+      )}
+
       {categories.length > 0 && (
-        <div>
+        <div className="py-6">
           <GroupHeading>Category</GroupHeading>
-          <div className="flex flex-col gap-0.5">
+          <div className="flex flex-col gap-1">
             <FilterRow
               label="All products"
               count={totalCount}
@@ -159,20 +195,6 @@ export function ProductFilters({
               />
             ))}
           </div>
-        </div>
-      )}
-
-      {range && value.price && (
-        <div>
-          <GroupHeading>Price</GroupHeading>
-          <RangeSlider
-            min={range.min}
-            max={range.max}
-            step={range.step}
-            value={value.price}
-            onChange={(price) => onChange({ ...value, price })}
-            formatValue={money}
-          />
         </div>
       )}
     </div>

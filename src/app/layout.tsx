@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { Outfit, Work_Sans, Inter, Poppins, Playfair_Display, JetBrains_Mono } from "next/font/google";
+import { Outfit, Work_Sans, Inter, Poppins, Playfair_Display, JetBrains_Mono, Montserrat } from "next/font/google";
 import { Toaster } from "react-hot-toast";
 import { ProgressBar } from "@/components/atoms/progress-bar/ProgressBar";
 import { toasterOptions } from "@/lib/toast";
@@ -37,6 +37,15 @@ const playfair = Playfair_Display({
   variable: "--font-playfair",
   subsets: ["latin"],
   display: "swap",
+});
+
+// The storefront's face. Applied only inside the (site) route group via the
+// `.storefront` class in globals.css; the dashboard keeps Work Sans/Outfit.
+const montserrat = Montserrat({
+  variable: "--font-montserrat",
+  subsets: ["latin"],
+  display: "swap",
+  weight: ["400", "500", "600", "700", "800"],
 });
 
 const jetbrainsMono = JetBrains_Mono({
@@ -78,7 +87,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${outfit.variable} ${workSans.variable} ${inter.variable} ${poppins.variable} ${playfair.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      className={`${outfit.variable} ${workSans.variable} ${inter.variable} ${poppins.variable} ${playfair.variable} ${jetbrainsMono.variable} ${montserrat.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col font-sans">
         <Suspense fallback={null}>

@@ -1,4 +1,5 @@
 import { Container } from "@/components/atoms/container/Container";
+import { SectionTitle } from "@/components/molecules/section-title/SectionTitle";
 import { Typography } from "@/components/atoms/typography";
 import { cn } from "@/utils/cn";
 
@@ -40,30 +41,16 @@ export function Faq({
   return (
     <section
       id={id}
-      className={cn("py-16 lg:py-24", surface && "bg-surface", className)}
+      className={cn("py-14 lg:py-20", surface && "bg-surface", className)}
     >
       <Container>
-        <div className="mb-12 flex flex-col items-center gap-3 text-center">
-          {eyebrow && (
-            <Typography variant="label" className="text-secondary">
-              {eyebrow}
-            </Typography>
-          )}
-          <Typography variant="h2" className="text-text-primary">
-            {title}
-          </Typography>
-          {description && (
-            <Typography variant="body" className="text-text-secondary max-w-2xl">
-              {description}
-            </Typography>
-          )}
-        </div>
+        <SectionTitle title={title} eyebrow={eyebrow} description={description} />
 
-        <div className="mx-auto flex max-w-3xl flex-col gap-4">
+        <div className="mx-auto flex max-w-3xl flex-col gap-3">
           {items.map((item) => (
             <details
               key={item.question}
-              className="group border-border/60 bg-background hover:border-primary/30 rounded-2xl border px-6 py-5 transition-colors"
+              className="group border-border bg-background hover:border-primary/30 open:border-primary/30 rounded-xl border px-6 py-5 transition-colors"
             >
               <summary className="focus-visible:ring-ring flex cursor-pointer list-none items-center justify-between gap-4 rounded-md focus-visible:ring-2 focus-visible:outline-none [&::-webkit-details-marker]:hidden">
                 <Typography
@@ -75,7 +62,7 @@ export function Faq({
                 </Typography>
                 <span
                   aria-hidden="true"
-                  className="text-secondary shrink-0 transition-transform duration-300 group-open:rotate-45"
+                  className="text-primary shrink-0 transition-transform duration-300 group-open:rotate-45"
                 >
                   <svg
                     className="h-5 w-5"

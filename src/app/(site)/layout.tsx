@@ -7,7 +7,7 @@ export default function SiteLayout({
 }>) {
   return (
     <CartProvider>
-      <div className="flex min-h-screen flex-col">{children}</div>
+      <div className="storefront flex min-h-screen flex-col font-sans">{children}</div>
     </CartProvider>
   );
 }

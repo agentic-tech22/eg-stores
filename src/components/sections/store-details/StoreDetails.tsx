@@ -1,6 +1,7 @@
 import { Button } from "@/components/atoms/button/Button";
 import { Container } from "@/components/atoms/container/Container";
 import { Typography } from "@/components/atoms/typography";
+import { SectionTitle } from "@/components/molecules/section-title/SectionTitle";
 import {
   mapDirectionsUrl,
   mapEmbedUrl,
@@ -16,6 +17,9 @@ interface StoreDetailsProps {
   hours: OpeningHours[];
   /** Landmark directions. Hidden when null. */
   directions?: string | null;
+  /** Optional heading above the cards. */
+  title?: string;
+  eyebrow?: string;
   className?: string;
   id?: string;
 }
@@ -71,14 +75,17 @@ export function StoreDetails({
   whatsappUrl,
   hours,
   directions,
+  title,
+  eyebrow,
   className,
   id,
 }: StoreDetailsProps) {
   const telHref = phone ? `tel:${phone.replace(/\s+/g, "")}` : null;
 
   return (
-    <section id={id} className={cn("py-16 lg:py-24", className)}>
+    <section id={id} className={cn("py-14 lg:py-20", className)}>
       <Container>
+        {title && <SectionTitle title={title} eyebrow={eyebrow} />}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <DetailCard iconPath={PIN_ICON} label="Where to find us">
             {address ? (

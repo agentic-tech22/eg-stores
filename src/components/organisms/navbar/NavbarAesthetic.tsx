@@ -17,18 +17,67 @@ interface NavbarAestheticProps {
   className?: string;
 }
 
+const PHONE_ICON =
+  "M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z";
+
 /**
- * The shop's header, on the same near-black as the dashboard's navigation rail.
+ * Header search. A plain GET form onto /products, which already reads `?q=`,
+ * so it works before hydration and needs no state of its own.
+ */
+function HeaderSearch({ className }: { className?: string }) {
+  return (
+    <form
+      action="/products"
+      method="get"
+      role="search"
+      className={cn("relative w-full", className)}
+    >
+      <label htmlFor="header-search" className="sr-only">
+        Search products
+      </label>
+      <input
+        id="header-search"
+        type="search"
+        name="q"
+        placeholder="Search products..."
+        className="border-border bg-surface/70 text-text-primary placeholder:text-text-muted focus:border-primary/50 focus:bg-background focus:ring-primary/15 h-11 w-full rounded-xl border pr-12 pl-4 text-sm transition-colors focus:ring-4 focus:outline-none"
+      />
+      <button
+        type="submit"
+        aria-label="Search"
+        className="text-text-secondary hover:text-primary absolute inset-y-0 right-0 flex w-11 cursor-pointer items-center justify-center transition-colors"
+      >
+        <svg
+          className="h-5 w-5"
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth={1.8}
+          stroke="currentColor"
+          aria-hidden="true"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
+          />
+        </svg>
+      </button>
+    </form>
+  );
+}
+
+/**
+ * The shop's header: a white bar under a deep brand-red utility strip.
  *
- * It used to be a floating white pill with a gradient CTA: handsome, and wrong
- * for a shop. It gave a phone-accessory storefront the chrome of a SaaS landing
- * page, and it had nowhere to put the two things a shopper reaches for first,
- * search and the cart. Dark chrome also leaves the product photography as the
- * only bright surface on the screen, which is where the eye should land.
+ * Laid out the way an electronics retailer's header reads: logo, a search box
+ * given the middle of the bar because it is the first thing a shopper with a
+ * model number in mind reaches for, then call and cart. The section links get
+ * a row of their own below on desktop, so they never compete with search for
+ * width. Keeping the bar white leaves the brand red to the strip, the footer
+ * and the calls to action, which is where it should catch the eye.
  *
- * Three rows, collapsing as the viewport narrows: a utility strip (delivery
- * promise, and how to reach a human), the bar itself, and below `lg` a search
- * row, because on a phone search matters more than the logo does.
+ * On a phone the nav row folds into the drawer and search drops to a full-width
+ * row under the bar, because there search matters more than the logo does.
  */
 export function NavbarAesthetic({ config, className }: NavbarAestheticProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -95,23 +144,16 @@ export function NavbarAesthetic({ config, className }: NavbarAestheticProps) {
       )}
     />
   ) : (
-    <>
-      <span className="from-shop-ink-accent to-accent flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-linear-to-br shadow-lg shadow-black/40">
-        <span className="font-heading text-[13px] leading-none font-extrabold tracking-tight text-white">
-          EG
-        </span>
-      </span>
-      <span className="font-heading text-shop-ink-text-active text-xl font-bold tracking-tight">
-        {config.siteName}
-      </span>
-    </>
+    <span className="font-heading text-primary text-2xl font-extrabold tracking-tight uppercase">
+      {config.siteName}
+    </span>
   );
 
   return (
     <header
       className={cn(
-        "bg-shop-ink sticky top-0 z-50 transition-shadow duration-300",
-        scrolled && "shadow-[0_8px_30px_rgba(0,0,0,0.35)]",
+        "bg-background sticky top-0 z-50 transition-shadow duration-300",
+        scrolled && "shadow-[0_6px_24px_rgba(17,24,39,0.08)]",
         className,
       )}
     >
@@ -119,28 +161,28 @@ export function NavbarAesthetic({ config, className }: NavbarAestheticProps) {
           so the header height animates instead of jumping. */}
       <div
         className={cn(
-          "bg-shop-ink-deep hidden overflow-hidden transition-all duration-300 ease-out sm:block",
-          scrolled ? "max-h-0 opacity-0" : "max-h-10 opacity-100",
+          "bg-shop-brand-deep hidden overflow-hidden transition-all duration-300 ease-out sm:block",
+          scrolled ? "max-h-0 opacity-0" : "max-h-12 opacity-100",
         )}
       >
         <Container>
-          <div className="text-shop-ink-muted flex items-center justify-between gap-4 py-2 text-[11px] font-medium tracking-wide">
-            <p className="flex items-center gap-2">
-              <span className="bg-shop-ink-accent inline-block h-1.5 w-1.5 shrink-0 rounded-full" />
-              Genuine stock, eSewa and cash on delivery, delivered across Nepal
+          <div className="flex items-center justify-between gap-4 py-2.5 text-xs font-medium text-white/90">
+            <p className="truncate">
+              Genuine stock · eSewa and cash on delivery · Delivered across
+              Nepal
             </p>
             <div className="flex shrink-0 items-center gap-5">
-              <a
-                href={`tel:${SUPPORT_WHATSAPP_TEL}`}
-                className="hover:text-shop-ink-text-active transition-colors"
+              <Link
+                href="/membership"
+                className="hidden transition-colors hover:text-white md:inline"
               >
-                {SUPPORT_WHATSAPP_TEL}
-              </a>
+                Membership
+              </Link>
               <a
                 href={SUPPORT_WHATSAPP_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="hover:text-shop-ink-text-active hidden transition-colors md:inline"
+                className="transition-colors hover:text-white"
               >
                 WhatsApp us
               </a>
@@ -149,22 +191,84 @@ export function NavbarAesthetic({ config, className }: NavbarAestheticProps) {
         </Container>
       </div>
 
-      <Container>
-        <nav
-          className={cn(
-            "flex items-center gap-6 transition-all duration-300 lg:gap-10",
-            scrolled ? "py-3" : "py-4",
-          )}
-          aria-label="Main navigation"
-        >
-          <Link
-            href="/"
-            className="flex shrink-0 items-center gap-2.5 transition-opacity hover:opacity-80"
+      <div className="border-border border-b">
+        <Container>
+          <div
+            className={cn(
+              "flex items-center gap-4 transition-all duration-300 lg:gap-10",
+              scrolled ? "py-2.5" : "py-3.5",
+            )}
           >
-            {brand}
-          </Link>
+            <Link
+              href="/"
+              className="flex shrink-0 items-center gap-2.5 transition-opacity hover:opacity-80"
+            >
+              {brand}
+            </Link>
 
-          <div className="hidden items-center gap-7 lg:flex xl:gap-9">
+            <HeaderSearch className="mx-auto hidden max-w-md lg:block" />
+
+            <div className="ml-auto flex items-center gap-1 lg:ml-0 lg:gap-2">
+              <a
+                href={`tel:${SUPPORT_WHATSAPP_TEL}`}
+                aria-label={`Call ${SUPPORT_WHATSAPP_TEL}`}
+                className="text-text-primary hover:bg-surface hover:text-primary hidden h-10 w-10 items-center justify-center rounded-full transition-colors sm:inline-flex"
+              >
+                <svg
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.7}
+                  stroke="currentColor"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d={PHONE_ICON}
+                  />
+                </svg>
+              </a>
+
+              {config.showCart && <CartButton tone="light" />}
+
+              <button
+                type="button"
+                className="text-text-primary hover:bg-surface hover:text-primary flex h-10 w-10 cursor-pointer items-center justify-center rounded-full transition-colors lg:hidden"
+                onClick={() => setMobileOpen(true)}
+                aria-label="Open menu"
+                aria-expanded={mobileOpen}
+              >
+                <svg
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.8}
+                  stroke="currentColor"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
+                  />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <HeaderSearch className="pb-3 lg:hidden" />
+        </Container>
+      </div>
+
+      {/* Section row, desktop only. The CTA sits at the end in the brand red,
+          set as a link rather than a button so the row reads as one line. */}
+      <nav
+        className="border-border hidden border-b lg:block"
+        aria-label="Main navigation"
+      >
+        <Container>
+          <div className="flex items-center justify-center gap-10 py-3">
             {config.links.map((link) => {
               const active = activeHref === link.href;
               return (
@@ -173,19 +277,17 @@ export function NavbarAesthetic({ config, className }: NavbarAestheticProps) {
                   href={resolveHref(link.href)}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "group relative py-1 text-sm font-medium transition-colors duration-200",
+                    "group relative py-1 text-[15px] font-medium transition-colors duration-200",
                     active
-                      ? "text-shop-ink-text-active"
-                      : "text-shop-ink-text hover:text-shop-ink-text-active",
+                      ? "text-primary"
+                      : "text-text-primary hover:text-primary",
                   )}
                 >
                   {link.label}
-                  {/* Grows from the left on hover, and sits already drawn for
-                      the current page. */}
                   <span
                     aria-hidden="true"
                     className={cn(
-                      "bg-shop-ink-accent absolute inset-x-0 -bottom-0.5 h-0.5 origin-left rounded-full transition-transform duration-300 ease-out",
+                      "bg-primary absolute inset-x-0 -bottom-0.5 h-0.5 origin-left rounded-full transition-transform duration-300 ease-out",
                       active
                         ? "scale-x-100"
                         : "scale-x-0 group-hover:scale-x-100",
@@ -194,50 +296,16 @@ export function NavbarAesthetic({ config, className }: NavbarAestheticProps) {
                 </Link>
               );
             })}
-          </div>
-
-
-          {/* `ml-auto` at every width, not just below `lg`. The search box
-              used to sit between the links and these and carried the
-              `ml-auto` itself; when it moved to the products page nothing
-              pushed the actions right any more and the cart ended up
-              jammed against the last nav link. */}
-          <div className="ml-auto flex items-center gap-1 lg:gap-3">
-            {config.showCart && <CartButton tone="ink" />}
 
             <Link
               href={config.ctaHref ?? "/products"}
-              className="bg-shop-ink-accent hover:bg-shop-ink-accent/85 ml-1 hidden items-center justify-center rounded-full px-6 py-2.5 text-xs font-bold tracking-wide text-white transition-all duration-200 hover:-translate-y-px active:translate-y-0 lg:inline-flex"
+              className="text-primary hover:text-secondary py-1 text-[15px] font-semibold transition-colors"
             >
               {config.ctaText}
             </Link>
-
-            <button
-              type="button"
-              className="text-shop-ink-text hover:bg-shop-ink-hover hover:text-shop-ink-text-active flex h-10 w-10 cursor-pointer items-center justify-center rounded-full transition-colors lg:hidden"
-              onClick={() => setMobileOpen(true)}
-              aria-label="Open menu"
-              aria-expanded={mobileOpen}
-            >
-              <svg
-                className="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={1.8}
-                stroke="currentColor"
-                aria-hidden="true"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
-                />
-              </svg>
-            </button>
           </div>
-        </nav>
-
-      </Container>
+        </Container>
+      </nav>
 
       {/* Mobile drawer. Kept mounted and slid off-screen so it animates both
           ways; pointer events are dropped while it is closed. */}
@@ -257,17 +325,17 @@ export function NavbarAesthetic({ config, className }: NavbarAestheticProps) {
         />
         <aside
           className={cn(
-            "bg-shop-ink border-shop-ink-border absolute inset-y-0 right-0 flex w-[19rem] max-w-[85vw] flex-col border-l shadow-2xl transition-transform duration-300 ease-out",
+            "bg-background border-border absolute inset-y-0 right-0 flex w-[19rem] max-w-[85vw] flex-col border-l shadow-2xl transition-transform duration-300 ease-out",
             mobileOpen ? "translate-x-0" : "translate-x-full",
           )}
         >
-          <div className="border-shop-ink-border flex items-center justify-between border-b px-5 py-4">
-            <span className="text-shop-ink-muted text-[10px] font-bold tracking-[0.2em] uppercase">
+          <div className="border-border flex items-center justify-between border-b px-5 py-4">
+            <span className="text-text-muted text-[10px] font-bold tracking-[0.2em] uppercase">
               Menu
             </span>
             <button
               type="button"
-              className="text-shop-ink-text hover:bg-shop-ink-hover hover:text-shop-ink-text-active flex h-9 w-9 cursor-pointer items-center justify-center rounded-full transition-colors"
+              className="text-text-primary hover:bg-surface hover:text-primary flex h-9 w-9 cursor-pointer items-center justify-center rounded-full transition-colors"
               onClick={() => setMobileOpen(false)}
               aria-label="Close menu"
             >
@@ -300,12 +368,12 @@ export function NavbarAesthetic({ config, className }: NavbarAestheticProps) {
                   className={cn(
                     "relative flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-colors duration-200",
                     active
-                      ? "bg-shop-ink-accent/15 text-shop-ink-text-active font-bold"
-                      : "text-shop-ink-text hover:bg-shop-ink-hover hover:text-shop-ink-text-active",
+                      ? "bg-primary-soft text-primary font-bold"
+                      : "text-text-primary hover:bg-surface hover:text-primary",
                   )}
                 >
                   {active && (
-                    <span className="bg-shop-ink-accent absolute top-1/2 left-0 h-5 w-1 -translate-y-1/2 rounded-r-full" />
+                    <span className="bg-primary absolute top-1/2 left-0 h-5 w-1 -translate-y-1/2 rounded-r-full" />
                   )}
                   {link.label}
                 </Link>
@@ -313,11 +381,11 @@ export function NavbarAesthetic({ config, className }: NavbarAestheticProps) {
             })}
           </div>
 
-          <div className="border-shop-ink-border flex flex-col gap-3 border-t px-4 py-5">
+          <div className="border-border flex flex-col gap-3 border-t px-4 py-5">
             <Link
               href={config.ctaHref ?? "/products"}
               onClick={() => setMobileOpen(false)}
-              className="bg-shop-ink-accent hover:bg-shop-ink-accent/85 inline-flex items-center justify-center rounded-full px-6 py-3 text-xs font-bold tracking-wide text-white transition-colors"
+              className="bg-primary hover:bg-secondary inline-flex items-center justify-center rounded-lg px-6 py-3 text-xs font-bold tracking-wide text-white transition-colors"
             >
               {config.ctaText}
             </Link>
@@ -325,7 +393,7 @@ export function NavbarAesthetic({ config, className }: NavbarAestheticProps) {
               href={SUPPORT_WHATSAPP_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="border-shop-ink-border text-shop-ink-text hover:border-shop-ink-accent/50 hover:text-shop-ink-text-active inline-flex items-center justify-center gap-2 rounded-full border px-6 py-3 text-xs font-bold tracking-wide transition-colors"
+              className="border-border text-text-primary hover:border-primary/50 hover:text-primary inline-flex items-center justify-center gap-2 rounded-lg border px-6 py-3 text-xs font-bold tracking-wide transition-colors"
             >
               WhatsApp {SUPPORT_WHATSAPP_TEL}
             </a>

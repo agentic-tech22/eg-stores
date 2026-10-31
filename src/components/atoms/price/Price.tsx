@@ -3,7 +3,7 @@ import { formatCurrency } from "@/utils/format-currency";
 import { cn } from "@/utils/cn";
 
 type PriceSize = "sm" | "md" | "lg";
-type PriceTone = "default" | "muted" | "inverse";
+type PriceTone = "default" | "muted" | "inverse" | "brand";
 
 interface PriceProps {
   /** Amount in the shop's active currency. Never pass a cost price here. */
@@ -33,12 +33,14 @@ const toneClasses: Record<PriceTone, string> = {
   default: "text-text-primary",
   muted: "text-text-secondary",
   inverse: "text-white",
+  brand: "text-accent",
 };
 
 const compareToneClasses: Record<PriceTone, string> = {
   default: "text-text-secondary",
   muted: "text-text-secondary",
   inverse: "text-white/60",
+  brand: "text-text-muted",
 };
 
 export function Price({

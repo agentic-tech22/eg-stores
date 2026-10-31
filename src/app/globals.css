@@ -4,21 +4,29 @@
   /* ===== EG Stores storefront theme (overridable from Supabase) =====
      The public shop stays light; the dashboard has its own dark palette in the
      `--admin-*` block below. */
-  --theme-primary: #4f46e5; /* indigo-600, main brand */
-  --theme-secondary: #7c3aed; /* violet-600, accent / brand highlight */
+  --theme-primary: #db272a; /* red-600, main brand */
+  --theme-secondary: #b81d20; /* red-700, hover / pressed */
   --theme-background: #ffffff;
-  --theme-surface: #f6f6fd; /* faint indigo tint */
-  --theme-text-primary: #1e1b2e; /* near-black indigo */
-  --theme-text-secondary: #56536b;
+  --theme-surface: #f5f5f5; /* neutral gray: banner tiles, image wells */
+  --theme-text-primary: #111827; /* near-black slate, headings */
+  --theme-text-secondary: #4b5563;
   --theme-text-muted: #9ca3af;
-  --theme-accent: #06b6d4; /* cyan, decorative gradients / glows */
+  --theme-accent: #ee4548; /* red-500, prices and tinted eyebrows */
 
   /* ===== Derived Colors ===== */
-  --theme-border: #e6e7f1;
-  --theme-input: #e6e7f1;
+  --theme-border: #ebebeb;
+  --theme-input: #e5e7eb;
   --theme-ring: var(--theme-primary);
   --theme-destructive: #dc2626;
   --theme-destructive-foreground: #ffffff;
+
+  /* Faintest tint of the brand: icon wells, active tab fills. */
+  --theme-primary-soft: #fee2e2;
+
+  /* Deep brand reds for the storefront chrome: the utility strip above the
+     header, and the two ends of the footer gradient. */
+  --shop-brand-deep: #8f0707;
+  --shop-brand-deepest: #300202;
 
   /* Design Tokens (overridable from Supabase) */
   --radius: 0.75rem;
@@ -118,7 +126,7 @@
   --shop-ink-muted: #666f80; /* section labels, fine print */
   /* Lighter than --theme-secondary, which is mixed for white and goes muddy
      against near-black. */
-  --shop-ink-accent: #8b7bff;
+  --shop-ink-accent: #f77274; /* red-400: the brand red, lifted for near-black */
 }
 
 /* Dynamic font family: switches --font-sans based on --theme-font-family */
@@ -237,6 +245,11 @@
   --color-shop-ink-text-active: var(--shop-ink-text-active);
   --color-shop-ink-muted: var(--shop-ink-muted);
   --color-shop-ink-accent: var(--shop-ink-accent);
+
+  /* Storefront brand chrome */
+  --color-primary-soft: var(--theme-primary-soft);
+  --color-shop-brand-deep: var(--shop-brand-deep);
+  --color-shop-brand-deepest: var(--shop-brand-deepest);
 
   /* Radius */
   --radius-sm: calc(var(--radius) - 2px);
@@ -452,6 +465,17 @@ body {
   background-color: var(--theme-background);
   color: var(--theme-text-primary);
   font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+/* ===== Storefront typeface =====
+   The public shop sets everything in Montserrat. Scoped to the (site) route
+   group's wrapper rather than set on :root, because the dashboard reads the
+   same --font-sans/--font-heading and must keep its own faces. The wrapper
+   also carries `font-sans`, since a variable redefined here only reaches
+   elements that resolve it below this point. */
+.storefront {
+  --font-sans: var(--font-montserrat);
+  --font-heading: var(--font-montserrat);
 }
 
 /* ===== Dashboard shell: page chrome =====
