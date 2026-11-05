@@ -283,7 +283,7 @@ export function ProductManager({
               Product
             </p>
             <p className="text-admin-text-muted col-span-2 text-[10px] font-bold tracking-[0.15em] uppercase">
-              Price
+              {can.viewFinances ? "Price / Cost" : "Price"}
             </p>
             <p className="text-admin-text-muted col-span-2 text-[10px] font-bold tracking-[0.15em] uppercase">
               Stock
@@ -359,8 +359,10 @@ export function ProductManager({
                     </div>
                   </RowLink>
 
-                  {/* Price */}
-                  <div className="col-span-2">
+                  {/* Price, with cost beneath it for finance viewers. Cost
+                      comes back zeroed for everyone else, so it is hidden
+                      rather than shown as a misleading "NPR 0". */}
+                  <div className="col-span-2 flex flex-col items-start gap-1">
                     <span className="bg-admin-card text-admin-text inline-flex rounded-lg px-2.5 py-1 text-xs font-bold">
                       {formatCurrency(
                         product.price,
@@ -368,6 +370,18 @@ export function ProductManager({
                         currency.locale,
                       )}
                     </span>
+                    {can.viewFinances && (
+                      <span className="text-admin-text-muted px-1 text-[11px] font-medium">
+                        Cost{" "}
+                        <span className="text-admin-text-secondary font-semibold">
+                          {formatCurrency(
+                            product.costPrice,
+                            currency.code,
+                            currency.locale,
+                          )}
+                        </span>
+                      </span>
+                    )}
                   </div>
 
                   {/* Stock */}
